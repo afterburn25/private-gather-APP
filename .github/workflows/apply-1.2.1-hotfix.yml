@@ -50,6 +50,7 @@ jobs:
         run: |
           git config user.name "afterburn25"
           git config user.email "afterburn32@gmail.com"
+          git restore --source=HEAD -- .github/workflows/native-validate.yml .github/workflows/apply-1.2.1-hotfix.yml
           git add -A
           git commit -m "Private Gather 1.2.1 — full-screen call, stable video and home-return repair"
           git push origin HEAD:hotfix/1.2.1-call-fullscreen-stability-home-return
