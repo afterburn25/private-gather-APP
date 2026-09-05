@@ -16,6 +16,9 @@ const configSource = fs.readFileSync(path.join(root,'src','config.ts'),'utf8');
 const loginSource = fs.readFileSync(path.join(root,'src','screens','LoginScreen.tsx'),'utf8');
 const homeSource = fs.readFileSync(path.join(root,'src','screens','HomeScreen.tsx'),'utf8');
 const callSource = fs.readFileSync(path.join(root,'src','calls','CallManager.ts'),'utf8');
+const callScreenSource = fs.readFileSync(path.join(root,'src','screens','CallScreen.tsx'),'utf8');
+const ringtoneSource = fs.readFileSync(path.join(root,'src','calls','CallRingtone.ts'),'utf8');
+const nativeCallPluginSource = fs.readFileSync(path.join(root,'plugins','withPrivateGatherNativeCalling.js'),'utf8');
 let failures = 0;
 let warnings = 0;
 
@@ -79,6 +82,21 @@ callSource.includes('private syncRemoteReceivers')
 callSource.includes('const mark=()=>{if(signalId)this.seenSignalIds.add(signalId)}')
   ? ok('CallManager marks signals only after processing')
   : fail('CallManager signal retry-safety guard missing');
+callScreenSource.includes('const StableRTCVideo=memo') && !callScreenSource.includes('remoteRevision||0')
+  ? ok('call video surfaces keep stable RTCView identity')
+  : fail('call video surfaces can still remount on receiver-state revisions');
+!callScreenSource.includes('objectFit="contain"')
+  ? ok('all full-screen call video surfaces use cover')
+  : fail('a call video surface still uses contain');
+callSource.includes("width:720,height:1280,aspectRatio:9/16")
+  ? ok('portrait-first camera constraints for full-screen preview')
+  : fail('portrait-first camera constraints missing');
+ringtoneSource.includes('player.loop=true') && !ringtoneSource.includes('didJustFinish')
+  ? ok('ringtone loops in native audio engine without early status restart')
+  : fail('ringtone still uses event-driven restart logic');
+nativeCallPluginSource.includes('cancelIncomingCallNotification')
+  ? ok('foreground app can cancel Android system call ringtone')
+  : fail('Android call-notification cancellation bridge missing');
 
 const api = process.env.EXPO_PUBLIC_PG_API_BASE || 'https://member.privategather.com/api/v1/native';
 api.startsWith('https://') ? ok(`HTTPS API ${api}`) : fail('EXPO_PUBLIC_PG_API_BASE must use HTTPS');

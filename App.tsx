@@ -79,6 +79,10 @@ function PrivateGatherApp(){
 
   const streamState=(state:any)=>{const detail=state.detail;setCall(prev=>{const localUrl=state.local?.toURL?.()||prev?.localUrl;const remoteUrl=state.remote?.toURL?.()||prev?.remoteUrl;return {id:Number(detail?.id||prev?.id||0),mode:(detail?.mode||prev?.mode||'voice') as 'voice'|'video',peer:String(detail?.peer?.display_name||detail?.peer?.name||prev?.peer||'Private Gather member'),status:String(state.status||detail?.status||prev?.status||'connecting'),localUrl,remoteUrl,localRevision:state.local?Number(prev?.localRevision||0)+1:prev?.localRevision,remoteRevision:state.remote?Number(state.remoteRevision||prev?.remoteRevision||0)+1:prev?.remoteRevision,photoUrl:String(detail?.peer?.call_photo_url||detail?.peer?.avatar_url||prev?.photoUrl||'')||undefined,incoming:prev?.incoming};})};
   const callEnded=()=>{stopCallRingtone().catch(()=>{});setCall(null)};
+  const cancelNativeCallNotification=async(id:number)=>{
+    if(Platform.OS!=='android'||!id)return;
+    try{await (NativeModules as any).PrivateGatherCallAccess?.cancelIncomingCallNotification?.(id)}catch{}
+  };
 
   async function showIncoming(payload:any){
     const foreground=AppState.currentState==='active';const normalized=await callManager.incoming(payload,false);if(!normalized)return;const id=Number(normalized.call_id||0);if(!id)return;
@@ -88,7 +92,7 @@ function PrivateGatherApp(){
     const peer=String(detail?.peer?.display_name||normalized.caller_name||'Private Gather member');
     const photoUrl=String(detail?.peer?.call_photo_url||detail?.peer?.avatar_url||normalized.caller_photo_url||normalized.caller_avatar||'')||undefined;
     setCall(prev=>prev?.id&&prev.id!==id?prev:{id,mode,peer,status:'incoming',photoUrl,incoming:true});
-    if(foreground)startCallRingtone().catch(()=>{});
+    if(foreground){await cancelNativeCallNotification(id);await startCallRingtone().catch(()=>false);}
     if(mode==='video'){
       try{
         const preview=await callManager.prepareIncomingPreview(id,detail||normalized);

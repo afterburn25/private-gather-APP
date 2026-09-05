@@ -302,6 +302,14 @@ class PrivateGatherCallAccessModule(private val reactContext: ReactApplicationCo
       promise.resolve(true)
     }catch(e:Throwable){promise.reject("PG_FULL_SCREEN_SETTINGS",e)}
   }
+  @ReactMethod fun cancelIncomingCallNotification(callId: Double, promise: Promise){
+    try{
+      val requestCode=callId.toInt()
+      val manager=reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      manager.cancel(41000 + (requestCode and 0x0fff))
+      promise.resolve(true)
+    }catch(e:Throwable){promise.reject("PG_CALL_NOTIFICATION_CANCEL",e)}
+  }
 }
 class PrivateGatherCallAccessPackage: ReactPackage {
   override fun createNativeModules(reactContext:ReactApplicationContext):List<NativeModule> = listOf(PrivateGatherCallAccessModule(reactContext))
