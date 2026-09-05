@@ -181,7 +181,7 @@ function PostCard({post,catalog,speakers,speakerId,onSpeakerChange,onVerify,onMe
    <Pressable onPress={toggleComments} style={s.commentsLink}><Text style={s.commentsLinkText}>{commentLabel}</Text></Pressable>
 
    {expanded?<View style={s.commentsPanel}>
-     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id?s.commentReply:null]}>
+     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id?s.commentReply:false]}>
        <Pressable onPress={()=>onMember(comment.author.id)}><ProtectedImage uri={comment.author.avatar_url} fallback={comment.author.display_name} style={s.commentAvatar}/></Pressable>
        <View style={s.commentBubble}>
          <View style={s.commentHead}><Text style={s.commentName}>{comment.speaker_name||comment.author.display_name}</Text><Text style={s.commentTime}>{comment.created}</Text></View>
