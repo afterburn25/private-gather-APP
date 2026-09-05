@@ -1,0 +1,161 @@
+name: Package Private Gather 1.1.200 Rev5 Build Kit
+
+on:
+  push:
+    branches:
+      - packaging/1.1.200-rev5-build-kit
+    paths:
+      - .github/workflows/package-rev5-build-kit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact merged Rev5 source
+        uses: actions/checkout@v4
+        with:
+          ref: 74888fcc757203fa062eaa43b9ac25df4cd44cf9
+          path: source
+
+      - name: Download GitHub-validated Rev5 Android APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: private-gather-android-debug
+          github-token: ${{ github.token }}
+          repository: afterburn25/private-gather-APP
+          run-id: 33983283331
+          path: validated-apk
+
+      - name: Assemble self-contained build kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          KIT="$GITHUB_WORKSPACE/kit/PrivateGatherNative"
+          mkdir -p "$KIT"
+          rsync -a --exclude='.git' "$GITHUB_WORKSPACE/source/" "$KIT/"
+
+          APK="$(find "$GITHUB_WORKSPACE/validated-apk" -type f -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          mkdir -p "$KIT/GITHUB-VALIDATED-APK"
+          cp "$APK" "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Native-1.1.200-Rev5-GitHub-Validated-Android-Debug.apk"
+
+          cat > "$KIT/BUILD-KIT-README.txt" <<'EOF'
+Private Gather Native App 1.1.200 Rev5 — Call Preview, Ringer & Messaging Composer Hotfix Build Kit
+
+SOURCE
+- Exact merged GitHub main commit: 74888fcc757203fa062eaa43b9ac25df4cd44cf9
+- Semantic app version: 1.1.200
+- Status: prepared / GitHub validated; physical-device acceptance still required.
+
+FIXES INCLUDED
+- Full-screen caller/incoming self-preview presentation.
+- Stable local RTCView identity so call-state updates do not remount/flash the preview.
+- Ringtone cancellation generation so Answer/Decline cannot allow an async ringtone start to resume.
+- Android incoming-call notification lifecycle: single alert per call and cancellation on Answer/Decline handoff.
+- Android keyboard resize and bottom-safe-area message composer placement.
+- Sent-message force-follow to the true conversation bottom after layout.
+
+PROJECT ROOT AFTER EXTRACTION
+C:\PrivateGatherNative
+
+NORMAL WINDOWS BUILD FLOW — POWERSHELL WINDOW 1
+Set-Location "C:\PrivateGatherNative"
+npm install --no-audit --no-fund
+npm run check:ready
+npm run typecheck
+npx expo config --type public
+npx expo prebuild --clean --platform android
+Set-Location "C:\PrivateGatherNative\android"
+.\gradlew.bat assembleDebug
+
+LOCAL APK PATH
+C:\PrivateGatherNative\android\app\build\outputs\apk\debug\app-debug.apk
+
+INSTALL
+adb devices
+adb install -r "C:\PrivateGatherNative\android\app\build\outputs\apk\debug\app-debug.apk"
+adb reverse tcp:8081 tcp:8081
+
+POWERSHELL WINDOW 2 — METRO SERVER
+Set-Location "C:\PrivateGatherNative"
+npx expo start --dev-client --clear
+Leave this window running.
+
+BACK TO POWERSHELL WINDOW 1 — LAUNCH
+adb devices
+adb reverse tcp:8081 tcp:8081
+adb shell am force-stop com.privoralabs.privategather
+adb shell monkey -p com.privoralabs.privategather -c android.intent.category.LAUNCHER 1
+
+GITHUB-VALIDATED APK INCLUDED
+C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Native-1.1.200-Rev5-GitHub-Validated-Android-Debug.apk
+
+To test the already-built GitHub APK instead of building locally:
+adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Native-1.1.200-Rev5-GitHub-Validated-Android-Debug.apk"
+adb reverse tcp:8081 tcp:8081
+Then start Metro in Window 2 and launch as above.
+
+WINDOWS EXPO-MODULES JAR LOCK RECOVERY — USE ONLY IF bundleLibCompileToJarDebug FAILS
+Set-Location "C:\PrivateGatherNative"
+Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 3
+Remove-Item "C:\PrivateGatherNative\node_modules\expo-modules-core\android\build" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "C:\PrivateGatherNative\node_modules\expo-updates-interface\android\build" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "C:\PrivateGatherNative\node_modules\expo-eas-client\android\build" -Recurse -Force -ErrorAction SilentlyContinue
+Set-Location "C:\PrivateGatherNative\android"
+.\gradlew.bat assembleDebug --no-daemon --max-workers=1
+EOF
+
+          APK_SHA="$(sha256sum "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Native-1.1.200-Rev5-GitHub-Validated-Android-Debug.apk" | awk '{print $1}')"
+          APK_SIZE="$(stat -c '%s' "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Native-1.1.200-Rev5-GitHub-Validated-Android-Debug.apk")"
+          cat > "$KIT/BUILD-KIT-VERIFICATION.txt" <<EOF
+Private Gather Native App 1.1.200 Rev5 Build Kit Verification
+
+Exact merged source commit: 74888fcc757203fa062eaa43b9ac25df4cd44cf9
+Validated PR head commit: dbb53ce5e100629a580c9ea51a72a808276e8cd1
+GitHub Native Validate run: 33983283331
+GitHub Android artifact ID: 9974621606
+GitHub artifact digest: sha256:32b9340dc1fcb874e303f6b905fc855d88d5c9a80901e008a8108882fbceb876
+Validated APK SHA-256: $APK_SHA
+Validated APK bytes: $APK_SIZE
+
+Validation passed before merge:
+- public-safety
+- npm ci
+- ready check
+- TypeScript typecheck
+- Expo public config
+- Android clean prebuild
+- Kotlin compile gate
+- Android debug APK assembly
+- Android artifact upload
+- iOS clean prebuild
+- CocoaPods install
+- Xcode workspace verification
+
+Physical-device acceptance is still required before this candidate is promoted to confirmed/live.
+EOF
+
+          (
+            cd "$KIT"
+            find . -type f ! -name 'BUILD-KIT-MANIFEST.sha256' -print0 | sort -z | xargs -0 sha256sum > BUILD-KIT-MANIFEST.sha256
+          )
+
+          cd "$GITHUB_WORKSPACE/kit"
+          zip -qr "$GITHUB_WORKSPACE/Private-Gather-Native-App-1.1.200-Rev5-Call-Messaging-Hotfix-Build-Kit.zip" PrivateGatherNative
+          sha256sum "$GITHUB_WORKSPACE/Private-Gather-Native-App-1.1.200-Rev5-Call-Messaging-Hotfix-Build-Kit.zip" > "$GITHUB_WORKSPACE/Private-Gather-Native-App-1.1.200-Rev5-Call-Messaging-Hotfix-Build-Kit-SHA256.txt"
+
+      - name: Upload complete Rev5 build kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-gather-1.1.200-rev5-build-kit
+          path: |
+            Private-Gather-Native-App-1.1.200-Rev5-Call-Messaging-Hotfix-Build-Kit.zip
+            Private-Gather-Native-App-1.1.200-Rev5-Call-Messaging-Hotfix-Build-Kit-SHA256.txt
+          if-no-files-found: error
+          retention-days: 7
