@@ -25,6 +25,8 @@ const callSource = fs.readFileSync(path.join(root,'src','calls','CallManager.ts'
 const callScreenSource = fs.readFileSync(path.join(root,'src','screens','CallScreen.tsx'),'utf8');
 const ringtoneSource = fs.readFileSync(path.join(root,'src','calls','CallRingtone.ts'),'utf8');
 const nativeCallPluginSource = fs.readFileSync(path.join(root,'plugins','withPrivateGatherNativeCalling.js'),'utf8');
+const messenger121PluginSource = fs.readFileSync(path.join(root,'plugins','withPrivateGatherMessenger121.js'),'utf8');
+const messengerBridgeSource = fs.readFileSync(path.join(root,'src','messenger','MessengerBridgeScreen.tsx'),'utf8');
 
 const messengerRootSource=fs.readFileSync(path.join(root,'MessengerApp.tsx'),'utf8');
 const messengerEngineSource=fs.readFileSync(path.join(root,'src','messenger','v2','MessengerEngine.ts'),'utf8');
@@ -49,7 +51,7 @@ nodeMajor === 22 && nodeMinor >= 13
   ? ok(`Node ${process.versions.node}`)
   : fail(`Node ${process.versions.node}; use Node 22.13+ for Expo SDK 57`);
 
-const expected='1.2.0';
+const expected='1.2.1';
 const runtimeVersions = {
   package: String(pkg.version || ''),
   lock: String(lock.version || lock.packages?.['']?.version || ''),
@@ -60,12 +62,12 @@ Object.values(runtimeVersions).every(v=>v===expected)
   ? ok(`native version consistency ${expected}`)
   : fail(`native version mismatch ${JSON.stringify(runtimeVersions)}`);
 
-configSource.includes("APP_VERSION=String(Constants.expoConfig?.version||'1.2.0')")
-  ? ok('source APP_VERSION fallback 1.2.0')
-  : fail('source APP_VERSION fallback is not 1.2.0');
-loginSource.includes('Private Gather · Native 1.2.0')
-  ? ok('visible login version 1.2.0')
-  : fail('visible login version is not 1.2.0');
+configSource.includes("APP_VERSION=String(Constants.expoConfig?.version||'1.2.1')")
+  ? ok('source APP_VERSION fallback 1.2.1')
+  : fail('source APP_VERSION fallback is not 1.2.1');
+loginSource.includes('Private Gather · Native 1.2.1')
+  ? ok('visible login version 1.2.1')
+  : fail('visible login version is not 1.2.1');
 
 for (const [name,range] of [['expo-font','~57.0.3'],['expo-asset','~57.0.16'],['expo-sqlite','~57.0.2']]) {
   pkg.dependencies?.[name]===range
@@ -92,6 +94,9 @@ callSource.includes("new Promise<void>(resolve=>setTimeout(()=>resolve(),delay))
 callSource.includes('private syncRemoteReceivers')
   ? ok('CallManager receiver synchronization present')
   : fail('CallManager receiver synchronization missing');
+callSource.includes('private remoteRenderStream()') && callSource.includes("if(this.mode==='video')return this.remoteVideo?.getVideoTracks?.().length?this.remoteVideo:undefined")
+  ? ok('video renderer never receives audio-only remote stream')
+  : fail('video renderer can receive audio-only remote stream');
 callSource.includes('const mark=()=>{if(signalId)this.seenSignalIds.add(signalId)}')
   ? ok('CallManager marks signals only after processing')
   : fail('CallManager signal retry-safety guard missing');
@@ -99,8 +104,8 @@ callScreenSource.includes('const StableRTCVideo=memo') && !callScreenSource.incl
   ? ok('call video surfaces keep stable RTCView identity')
   : fail('call video surfaces can still remount on receiver-state revisions');
 !callScreenSource.includes('objectFit="contain"')
-  ? ok('all full-screen call video surfaces use cover')
-  : fail('a call video surface still uses contain');
+  ? ok('all legacy full-screen call video surfaces use cover')
+  : fail('a legacy call video surface still uses contain');
 callSource.includes("width:720,height:1280,aspectRatio:9/16")
   ? ok('portrait-first camera constraints for full-screen preview')
   : fail('portrait-first camera constraints missing');
@@ -110,7 +115,6 @@ ringtoneSource.includes('player.loop=true') && !ringtoneSource.includes('didJust
 nativeCallPluginSource.includes('cancelIncomingCallNotification')
   ? ok('foreground app can cancel Android system call ringtone')
   : fail('Android call-notification cancellation bridge missing');
-
 
 mainResolvedConfig.android?.package === 'com.privoralabs.privategather' ? ok('main Android application id') : fail('main Android application id mismatch');
 mainResolvedConfig.ios?.bundleIdentifier === 'com.privoralabs.privategather' ? ok('main iOS bundle identifier') : fail('main iOS bundle identifier mismatch');
@@ -122,8 +126,24 @@ messengerStoreSource.includes('journal_mode = WAL') && messengerStoreSource.incl
 messengerEngineSource.includes('flushOutbox') && messengerEngineSource.includes('ReverbClient') && messengerEngineSource.includes('setTyping') ? ok('Messenger durable realtime engine') : fail('Messenger realtime/outbox engine missing');
 messengerRootSource.includes('MessengerEngine') && messengerRootSource.includes('privategathermessenger://') ? ok('dedicated Messenger native root') : fail('Messenger root/handoff missing');
 messengerRingerSource.includes('COMPLETE_CLIP_MS=8500') && messengerRingerSource.includes('player.loop=false') && !messengerRingerSource.includes('didJustFinish') ? ok('Messenger ringtone completes full clip before restart') : fail('Messenger ringtone cycle guard missing');
-messengerCallSource.includes('objectFit="cover"') && messengerCallSource.includes('useWindowDimensions') ? ok('Messenger full-window cover video') : fail('Messenger full-window video contract missing');
-nativeCallPluginSource.includes('private-gather-messenger-call-alert-v120') && nativeCallPluginSource.includes('setOnlyAlertOnce(true)') ? ok('Android incoming call dedupe') : fail('Android incoming call dedupe missing');
+messengerCallSource.includes('objectFit="cover"') && messengerCallSource.includes('enterImmersiveCallMode') && messengerCallSource.includes('hasVideo&&!hasRemote&&call.localUrl') && messengerCallSource.includes('hasVideo&&call.remoteUrl')
+  ? ok('Messenger immersive single-surface full-window video contract')
+  : fail('Messenger full-window video contract missing');
+messenger121PluginSource.includes('presentIncomingCall') && messenger121PluginSource.includes('PG_MESSENGER_121_DIRECT_ACTIVITY') && messenger121PluginSource.includes('pg-messenger-calls-v121')
+  ? ok('Messenger Android full-screen incoming-call promotion')
+  : fail('Messenger Android full-screen incoming-call promotion missing');
+nativeCallPluginSource.includes('setOnlyAlertOnce(true)') && messenger121PluginSource.includes('private-gather-messenger-call-alert-v121')
+  ? ok('Android incoming call dedupe')
+  : fail('Android incoming call dedupe missing');
+messengerBridgeSource.includes('handoffArmed') && messengerBridgeSource.includes("navigation.navigate('Home')")
+  ? ok('main app returns Home after external Messenger handoff')
+  : fail('main app Messenger handoff does not restore Home');
+
+const messengerIcons=['messenger-icon-transparent.png','messenger-icon.png','messenger-adaptive-icon.png','messenger-ios-icon.png'];
+const missingIcons=messengerIcons.filter(name=>!fs.existsSync(path.join(root,'assets',name)));
+missingIcons.length===0 && messengerResolvedConfig.android?.icon==='./assets/messenger-icon.png' && messengerResolvedConfig.ios?.icon==='./assets/messenger-ios-icon.png'
+  ? ok('Messenger purple-heart launcher icon assets and flavor wiring')
+  : fail(`Messenger launcher icon contract missing ${JSON.stringify(missingIcons)}`);
 
 const api = process.env.EXPO_PUBLIC_PG_API_BASE || 'https://member.privategather.com/api/v1/native';
 api.startsWith('https://') ? ok(`HTTPS API ${api}`) : fail('EXPO_PUBLIC_PG_API_BASE must use HTTPS');
