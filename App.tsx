@@ -148,7 +148,6 @@ function PrivateGatherApp(){
 
   async function boot(){
     setFatal('');
-
     let cfg:any=rtConfigRef.current;
     loadRealtimeConfig().then(value=>{if(value)cfg=value}).catch(()=>{});
 
@@ -160,15 +159,10 @@ function PrivateGatherApp(){
         setCall(prev=>prev?{...prev,status:'connecting',incoming:false}:prev);
         const opened=await callManager.open(callId,rtConfigRef.current,streamState,callEnded);
         setCall(prev=>prev?{...prev,mode:opened.detail?.mode||prev.mode,peer:opened.detail?.peer?.display_name||prev.peer,status:'active',incoming:false}:prev);
-      }catch(e:any){
-        setFatal(String(e?.message||e));
-        await callManager.end().catch(()=>{});
-        setCall(null);
-      }
+      }catch(e:any){setFatal(String(e?.message||e));await callManager.end().catch(()=>{});setCall(null);}
     },()=>{callManager.end().catch(()=>{})}).catch(()=>{});
 
     const stopIncomingPoll=callManager.watchIncoming((payload:any)=>showIncoming(payload).catch(()=>{}),1200);
-
     const launchedForIncomingCall=!!pendingIncomingLinkRef.current;
     if(pendingIncomingLinkRef.current){
       const pending:any=pendingIncomingLinkRef.current;pendingIncomingLinkRef.current=null;
@@ -273,7 +267,7 @@ function PrivateGatherApp(){
   if(!authed)return <LoginScreen onLogin={signIn}/>;
 
   const go=(name:string,params?:any)=>{if(navRef.isReady())(navRef as any).navigate(name,params)};
-  const mainTabs=()=> <Tabs.Navigator screenOptions={({route})=>({headerShown:false,tabBarHideOnKeyboard:true,tabBarActiveTintColor:C.pink,tabBarInactiveTintColor:C.faint,tabBarStyle:{height:58+Math.max(insets.bottom,10),paddingTop:6,paddingBottom:Math.max(insets.bottom,10),backgroundColor:'#050914',borderTopColor:'#203149',borderTopWidth:1},tabBarLabelStyle:{fontSize:10,fontWeight:'800'},tabBarIcon:({color,size})=>{const map:any={Home:['house.fill','home'],Discover:['safari.fill','explore'],Messages:['message.fill','chat_bubble'],Events:['calendar','event'],Me:['person.fill','person']};const pair=map[route.name]||['circle','circle'];return <NativeIcon ios={pair[0]} android={pair[1]} size={Math.min(size,24)} color={color}/>;},tabBarBadge:route.name==='Messages'&&messageUnread>0?(messageUnread>99?'99+':messageUnread):undefined,tabBarBadgeStyle:{backgroundColor:C.pink,color:'#fff',fontSize:9,fontWeight:'900')}})}>
+  const mainTabs=()=> <Tabs.Navigator screenOptions={({route})=>({headerShown:false,tabBarHideOnKeyboard:true,tabBarActiveTintColor:C.pink,tabBarInactiveTintColor:C.faint,tabBarStyle:{height:58+Math.max(insets.bottom,10),paddingTop:6,paddingBottom:Math.max(insets.bottom,10),backgroundColor:'#050914',borderTopColor:'#203149',borderTopWidth:1},tabBarLabelStyle:{fontSize:10,fontWeight:'800'},tabBarIcon:({color,size})=>{const map:any={Home:['house.fill','home'],Discover:['safari.fill','explore'],Messages:['message.fill','chat_bubble'],Events:['calendar','event'],Me:['person.fill','person']};const pair=map[route.name]||['circle','circle'];return <NativeIcon ios={pair[0]} android={pair[1]} size={Math.min(size,24)} color={color}/>;},tabBarBadge:route.name==='Messages'&&messageUnread>0?(messageUnread>99?'99+':messageUnread):undefined,tabBarBadgeStyle:{backgroundColor:C.pink,color:'#fff',fontSize:9,fontWeight:'900'}})}>
     <Tabs.Screen name="Home">{()=> <HomeScreen me={me} notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onMember={id=>go('Member',{id})} onEvent={id=>go('Event',{id})} onDiscover={()=>go('MainTabs',{screen:'Discover'})} onEvents={()=>go('MainTabs',{screen:'Events'})} onMessages={()=>go('MainTabs',{screen:'Messages'})} onVerify={()=>go('Verification')}/>}</Tabs.Screen>
     <Tabs.Screen name="Discover">{()=> <DiscoverScreen notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onMember={id=>go('Member',{id})}/>}</Tabs.Screen>
     <Tabs.Screen name="Messages">{()=> <MessagesScreen notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onConversation={id=>go('Conversation',{id})} pulse={messagePulse} onUnread={setUnread}/>}</Tabs.Screen>
