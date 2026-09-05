@@ -69,8 +69,8 @@
       ["expo-notifications",{"defaultChannel":"pg-calls-v200","enableBackgroundRemoteNotifications":true,"icon":"./assets/notification-icon.png","color":"#ff35d3","sounds":["./assets/audio/calling.wav"]}],
       ["expo-build-properties",{"ios":{"deploymentTarget":"16.4"},"android":{"compileSdkVersion":36,"targetSdkVersion":36}}],
       "./plugins/withPrivateGatherCallLifecycleFix",
-      "./plugins/withPrivateGatherNativeCalling",
-      "./plugins/withPrivateGatherMessenger121"
+      "./plugins/withPrivateGatherMessenger121",
+      "./plugins/withPrivateGatherNativeCalling"
     ],
     "icon": "./assets/icon.png"
   }
