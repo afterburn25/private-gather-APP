@@ -149,13 +149,60 @@ Protected areas unless the request requires changes:
 - PushKit / APNs / FCM delivery structure
 - stable Private Gather call UUID mapping
 - staged native update system
-- working PWA/web call transport
 - privacy-safe native serializers
 - established update/package allow-list rules
 
 When changing a protected area, document why, add/extend a regression check where practical, and reverify the previously working behavior.
 
-## 7. Production-runtime rules
+## 7. Native product architecture
+
+Private Gather is now a **native-first two-app product**. PWA parity is no longer a product requirement.
+
+### Private Gather
+The main native app owns the broader community experience:
+- Home/feed
+- Discover/members
+- Events/gatherings
+- Clubs/groups
+- Profile/account
+- Notifications
+- Verification, privacy and safety settings
+- entry points into messaging and calls
+
+### Private Gather Messenger
+A separate native app owns communication:
+- conversation list
+- 1:1 and group messaging
+- typing, presence, delivery and read receipts
+- reactions, replies, unsend/revoke and media messaging
+- voice/video calling
+- incoming call UI, ringtone, CallKit/ConnectionService integration
+- communication-specific notifications
+
+### Shared platform
+Both native apps must use the same authoritative backend account and shared service contracts:
+- Laravel API/auth authority
+- Reverb/WebSocket realtime infrastructure
+- push gateway / APNs / FCM infrastructure
+- WebRTC/TURN infrastructure
+- member identity and speaker identity rules
+- media/privacy/verification rules
+
+Do not duplicate business truth independently in each app. Shared protocol/domain code should live in reusable modules/packages where practical, while UI/navigation remain app-specific.
+
+### Cross-app authentication and handoff
+- Do not depend on unsafe shared plaintext tokens or deprecated platform mechanisms.
+- Each app keeps its own secure credential storage.
+- Cross-app sign-in/handoff should use platform-supported secure app links/universal links or a short-lived backend-issued handoff token.
+- Opening Messages/Call from the main app should deep-link into Private Gather Messenger when installed.
+- If Messenger is not installed, the main app should route the user to the supported install path without recreating Messenger inside the main app.
+
+### PWA status
+- Messenger PWA is legacy/maintenance-only and is not a parity target for new native work.
+- Do not delay, constrain or redesign native messaging/calling features merely to preserve PWA behavior.
+- Existing web/PWA functionality may remain available during migration, but it is not the future architecture.
+
+## 8. Production-runtime rules
 
 Distributed builds must not depend on a developer computer.
 
@@ -170,7 +217,7 @@ Never ship:
 
 Production/preview builds must use public HTTPS/WSS services and must start without Metro.
 
-## 8. Sequential release discipline
+## 9. Sequential release discipline
 
 - Build from the exact latest accepted/prepared authoritative source, not a reconstructed approximation.
 - Preserve exact version boundaries.
@@ -180,7 +227,7 @@ Production/preview builds must use public HTTPS/WSS services and must start with
 - Do not add database changes unless the requested feature requires them.
 - When migrations are unchanged, verify the migration count/hash boundary remains unchanged.
 
-## 9. Validation reporting
+## 10. Validation reporting
 
 Every candidate handoff should state:
 - source repository / baseline
@@ -199,7 +246,7 @@ Every candidate handoff should state:
 
 Do not hide failed checks behind a generic "validated" label.
 
-## 10. Future CI expansion
+## 11. Future CI expansion
 
 Recommended additions, but not mandatory until implemented in GitHub:
 - unit tests for API client, auth, update selection, call UUID mapping, offline queues
@@ -215,7 +262,7 @@ Recommended additions, but not mandatory until implemented in GitHub:
 
 When an item becomes implemented and consistently passing, update this file and `RELEASE-STATE.json` to make it part of the mandatory gate.
 
-## 11. Start-of-chat protocol
+## 12. Start-of-chat protocol
 
 At the beginning of any future Private Gather development chat:
 1. Read `AI-WORKFLOW.md`.
@@ -231,7 +278,7 @@ Suggested user prompt:
 
 > Continue Private Gather using the authoritative project workflow. Read AI-WORKFLOW.md, RELEASE-STATE.json, and the current Private Gather master handoff before changing anything. Use GitHub-first validation and do not call a candidate ready until the exact required CI run passes.
 
-## 12. End-of-work protocol
+## 13. End-of-work protocol
 
 After a material development session:
 1. Update source.
