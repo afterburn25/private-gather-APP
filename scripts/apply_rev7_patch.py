@@ -96,25 +96,24 @@ ps(
 )
 ps("pg-calls-v199", "pg-calls-v202", "new notification channel")
 
-show = "  private fun showIncomingCall(data: Map<String, String>) {\n"
-insert = (
-    '    val callId = data[\\"call_id\\"] ?: return\n'
-    "    val now = System.currentTimeMillis()\n"
-    '    val prefs = getSharedPreferences(\\"private-gather-call-alert-v202\\", Context.MODE_PRIVATE)\n'
-    '    val lastId = prefs.getString(\\"last_call_id\\", \\"\\") ?: \\"\\"\n'
-    '    val lastAt = prefs.getLong(\\"last_call_at\\", 0L)\n'
-    "    if (lastId == callId && now - lastAt < 120000L) return\n"
-    '    prefs.edit().putString(\\"last_call_id\\", callId).putLong(\\"last_call_at\\", now).apply()\n'
+# Remove the original callId declaration before inserting the dedupe guard.
+ps(
+    r'''    val callId = data[\"call_id\"] ?: return
+    val caller = data[\"caller_name\"] ?: \"Private Gather member\"''',
+    r'''    val caller = data[\"caller_name\"] ?: \"Private Gather member\"''',
+    "move callId declaration",
 )
-ps(show, show + insert, "incoming notification dedupe")
 
-needle = '    val callId = data[\\"call_id\\"] ?: return\n'
-first = s.find(needle)
-second = s.find(needle, first + 1)
-if first < 0 or second < 0:
-    raise SystemExit("NOT FOUND plugin: second callId declaration")
-s = s[:second] + s[second + len(needle):]
-print("patched plugin duplicate callId")
+show = "  private fun showIncomingCall(data: Map<String, String>) {\n"
+insert = r'''    val callId = data[\"call_id\"] ?: return
+    val now = System.currentTimeMillis()
+    val prefs = getSharedPreferences(\"private-gather-call-alert-v202\", Context.MODE_PRIVATE)
+    val lastId = prefs.getString(\"last_call_id\", \"\") ?: \"\"
+    val lastAt = prefs.getLong(\"last_call_at\", 0L)
+    if (lastId == callId && now - lastAt < 120000L) return
+    prefs.edit().putString(\"last_call_id\", callId).putLong(\"last_call_at\", now).apply()
+'''
+ps(show, show + insert, "incoming notification dedupe")
 
 ps(
     "      .setAutoCancel(false)\n      .setSound(sound)",
