@@ -127,8 +127,8 @@
           }
         }
       ],
-      "./plugins/withPrivateGatherNativeCalling",
-      "./plugins/withPrivateGatherCallLifecycleFix"
+      "./plugins/withPrivateGatherCallLifecycleFix",
+      "./plugins/withPrivateGatherNativeCalling"
     ],
     "icon": "./assets/icon.png"
   }
