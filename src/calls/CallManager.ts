@@ -88,10 +88,10 @@ export class CallManager{
   }
 
   private videoConstraints(){
-    // Prefer the camera's wider 4:3 field of view. On a portrait-held phone the native
-    // camera stack rotates this to 3:4, which keeps faces less cropped than forcing 9:16.
-    // CallScreen uses contain for the large self preview and cover only for the small PiP.
-    return {facingMode:'user',width:640,height:480,aspectRatio:4/3,frameRate:24};
+    // Rev6: request a portrait camera stream first so the full-screen preview and
+    // full-screen call surface match the phone viewport instead of starting from a
+    // landscape 4:3 stream that can appear boxed on some Android camera stacks.
+    return {facingMode:'user',width:720,height:1280,aspectRatio:9/16,frameRate:24};
   }
 
   private async captureLocal(mode:'voice'|'video',audio=true){
@@ -100,8 +100,9 @@ export class CallManager{
 
     const attempts:any[]=[
       {audio,video:this.videoConstraints()},
-      {audio,video:{facingMode:'user',width:1280,height:720,aspectRatio:16/9}},
       {audio,video:{facingMode:'user',width:540,height:960,aspectRatio:9/16}},
+      {audio,video:{facingMode:'user',width:640,height:480,aspectRatio:4/3}},
+      {audio,video:{facingMode:'user',width:1280,height:720,aspectRatio:16/9}},
       {audio,video:{facingMode:'user'}},
       {audio,video:true},
     ];

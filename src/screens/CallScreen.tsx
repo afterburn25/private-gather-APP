@@ -1,10 +1,14 @@
-import React,{useState} from 'react';
+import React,{memo,useState} from 'react';
 import {Pressable,StatusBar,StyleSheet,Text,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RTCView} from 'react-native-webrtc';
 import {C} from '../theme';
 import NativeIcon from '../components/NativeIcon';
 import ProtectedImage from '../components/ProtectedImage';
+
+const StableRTCVideo=memo(function StableRTCVideo({streamURL,style,mirror=false,zOrder=0}:{streamURL:string;style:any;mirror?:boolean;zOrder?:number}){
+ return <RTCView style={style} streamURL={streamURL} objectFit="cover" mirror={mirror} zOrder={zOrder}/>;
+},(a,b)=>a.streamURL===b.streamURL&&a.mirror===b.mirror&&a.zOrder===b.zOrder);
 
 export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,onDecline}:{call:any;onEnd:()=>void;onMute:()=>boolean;onVideo:()=>boolean;onFlip:()=>boolean;onAnswer?:()=>void;onDecline?:()=>void}){
  const insets=useSafeAreaInsets();
@@ -15,29 +19,15 @@ export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,on
  const dockOffset=Math.max(insets.bottom,14)+24;
 
  return <View style={s.page}><StatusBar hidden barStyle="light-content"/>
-   {call.remoteUrl?<RTCView key={`remote-${call.remoteRevision||0}-${call.remoteUrl}`} style={s.remoteVideo} streamURL={call.remoteUrl} objectFit="contain" zOrder={0}/>:
+   {call.remoteUrl?<StableRTCVideo streamURL={call.remoteUrl} style={s.remoteVideo} zOrder={0}/>:
     call.photoUrl?<ProtectedImage uri={call.photoUrl} fallback={call.peer||'PG'} style={s.backgroundPhoto}/>:<View style={s.backgroundPhoto}/>}
    <View style={s.photoShade}/>
 
    {waitingVideo?<View style={s.previewStage}>
-      {call.localUrl?<RTCView
-        key={`waiting-local-${call.localUrl}`}
-        style={s.waitingLocal}
-        streamURL={call.localUrl}
-        objectFit="cover"
-        mirror
-        zOrder={2}
-      />:<View style={s.previewStarting}><NativeIcon ios="video.fill" android="videocam" size={34} color={C.cyan2}/><Text style={s.previewStartingText}>Starting your camera…</Text></View>}
+      {call.localUrl?<StableRTCVideo streamURL={call.localUrl} style={s.waitingLocal} mirror zOrder={2}/>:<View style={s.previewStarting}><NativeIcon ios="video.fill" android="videocam" size={34} color={C.cyan2}/><Text style={s.previewStartingText}>Starting your camera…</Text></View>}
    </View>:null}
 
-   {call.remoteUrl&&call.localUrl?<View style={[s.pipFrame,{top:topOffset+38}]}><RTCView
-      key={`pip-${call.localUrl}`}
-      style={s.pip}
-      streamURL={call.localUrl}
-      objectFit="cover"
-      mirror
-      zOrder={2}
-   /></View>:null}
+   {call.remoteUrl&&call.localUrl?<View style={[s.pipFrame,{top:topOffset+38}]}><StableRTCVideo streamURL={call.localUrl} style={s.pip} mirror zOrder={2}/></View>:null}
 
    <View style={s.topScrim}/><View style={s.bottomScrim}/>
    <View style={[s.top,{top:topOffset}]}>
@@ -71,12 +61,12 @@ function ActionButton({label,ios,android,onPress,danger=false,success=false,larg
  </Pressable>
 }
 const s=StyleSheet.create({
- page:{flex:1,backgroundColor:'#02050a'},
- remoteVideo:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
+ page:{...StyleSheet.absoluteFillObject,backgroundColor:'#02050a',overflow:'hidden'},
+ remoteVideo:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',backgroundColor:'#02050a'},
  backgroundPhoto:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
  photoShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(2,5,10,.56)'},
- previewStage:{...StyleSheet.absoluteFill,overflow:'hidden',backgroundColor:'#010308',elevation:1},
- waitingLocal:{...StyleSheet.absoluteFill,backgroundColor:'#010308'},
+ previewStage:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',overflow:'hidden',backgroundColor:'#010308',elevation:1},
+ waitingLocal:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',backgroundColor:'#010308'},
  previewStarting:{flex:1,alignItems:'center',justifyContent:'center',gap:10},previewStartingText:{color:'#d7e1ee',fontSize:11,fontWeight:'800'},
  pipFrame:{position:'absolute',right:16,width:126,height:168,borderRadius:22,borderWidth:2,borderColor:C.cyan,backgroundColor:C.panel,overflow:'hidden',shadowColor:C.cyan,shadowOpacity:.32,shadowRadius:14,elevation:20},
  pip:{width:'100%',height:'100%',backgroundColor:'#010308'},
