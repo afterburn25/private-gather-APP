@@ -1,0 +1,151 @@
+name: Package Private Gather 1.1.200 Rev6 Build Kit
+
+on:
+  push:
+    branches:
+      - packaging/1.1.200-rev6-build-kit
+    paths:
+      - .github/workflows/package-rev6-build-kit.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact merged Rev6 source
+        uses: actions/checkout@v4
+        with:
+          ref: be0819156bc382b699e69330dded59599c8a3976
+          path: source
+          fetch-depth: 1
+
+      - name: Download GitHub-validated Rev6 APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p apk
+          gh run download 33986446763 --repo afterburn25/private-gather-APP --name private-gather-android-debug --dir apk
+          test -f apk/app-debug.apk
+
+      - name: Assemble complete Rev6 build kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          KIT="Private-Gather-Native-App-1.1.200-Rev6-Full-Screen-Video-Single-Ringer-Repair-Build-Kit"
+          mkdir -p "$KIT"
+          rsync -a --exclude='.git' source/ "$KIT"/
+          mkdir -p "$KIT/GITHUB-VALIDATED-APK"
+          cp apk/app-debug.apk "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Native-1.1.200-Rev6-GitHub-Validated-Android-Debug.apk"
+          cat > "$KIT/BUILD-AND-TEST.txt" <<'EOF'
+Private Gather Native App 1.1.200 Rev6 — Build & Test
+
+SOURCE
+Exact merged GitHub source commit:
+be0819156bc382b699e69330dded59599c8a3976
+
+GITHUB VALIDATION
+Native Validate run: 33986446763
+Result: SUCCESS
+Passed: public safety, exact npm install, ready check, TypeScript, Expo config, Android prebuild, Kotlin compile, Android debug APK build/upload, iOS prebuild, CocoaPods, Xcode workspace verification.
+
+WINDOW 1 — BUILD
+Set-Location "C:\PrivateGatherNative"
+npm install --no-audit --no-fund
+npm run check:ready
+npm run typecheck
+npx expo config --type public
+npx expo prebuild --clean --platform android
+Set-Location "C:\PrivateGatherNative\android"
+.\gradlew.bat assembleDebug
+
+INSTALL
+adb devices
+adb install -r "C:\PrivateGatherNative\android\app\build\outputs\apk\debug\app-debug.apk"
+adb reverse tcp:8081 tcp:8081
+
+WINDOW 2 — METRO SERVER
+Set-Location "C:\PrivateGatherNative"
+npx expo start --dev-client --clear
+
+BACK TO WINDOW 1 — LAUNCH
+adb devices
+adb reverse tcp:8081 tcp:8081
+adb shell am force-stop com.privoralabs.privategather
+adb shell monkey -p com.privoralabs.privategather -c android.intent.category.LAUNCHER 1
+
+TEST TARGETS
+- caller/local preview fills the screen
+- caller/local preview does not blink/remount
+- remote member video fills the screen
+- remote member video remains stable
+- ringtone completes the full media cycle before looping
+- Decline/Answer stops the ringtone immediately
+- foreground Android does not overlap system-notification ringtone with in-app ringtone
+
+Do not promote Rev6 to confirmed/live until physical-device testing is accepted.
+EOF
+          cat > "$KIT/VERIFICATION-REPORT.txt" <<'EOF'
+Private Gather Native App 1.1.200 Rev6 — Verification Report
+
+Prepared from exact merged commit:
+be0819156bc382b699e69330dded59599c8a3976
+
+Validated PR source head:
+b0950c4f4dbe2c29a961f8dae77862a9a06c52a5
+
+GitHub Native Validate run:
+33986446763
+
+Validation result:
+SUCCESS
+
+Passed gates:
+- Public repository safety gate
+- Exact dependency install
+- Ready check
+- TypeScript / Android
+- TypeScript / iOS
+- Expo config
+- Android prebuild
+- Kotlin compile
+- Android assembleDebug
+- APK artifact upload
+- iOS prebuild
+- CocoaPods
+- Xcode workspace verification
+
+GitHub APK artifact source:
+Run 33986446763
+Artifact: private-gather-android-debug
+Artifact ID: 9975529280
+GitHub artifact ZIP digest: sha256:913584f63c3f2059d60f151bc8c74c7cd48e09a4c112ef41d701ff1e9a719a86
+
+Rev6 scope:
+- stable memoized RTC video surfaces
+- full-screen cover rendering for local and remote video
+- portrait-first 9:16 camera capture with fallbacks
+- native audio-engine ringtone looping instead of playback-status restarts
+- exact Android incoming-call notification cancellation before foreground in-app ringtone
+
+Status:
+Prepared / GitHub validated. Physical-device acceptance still required.
+EOF
+          (
+            cd "$KIT"
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          zip -qr "$KIT.zip" "$KIT"
+          sha256sum "$KIT.zip" > "$KIT.zip.sha256.txt"
+
+      - name: Upload complete Rev6 build kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-gather-1.1.200-rev6-build-kit
+          path: |
+            Private-Gather-Native-App-1.1.200-Rev6-Full-Screen-Video-Single-Ringer-Repair-Build-Kit.zip
+            Private-Gather-Native-App-1.1.200-Rev6-Full-Screen-Video-Single-Ringer-Repair-Build-Kit.zip.sha256.txt
+          if-no-files-found: error
+          compression-level: 0
