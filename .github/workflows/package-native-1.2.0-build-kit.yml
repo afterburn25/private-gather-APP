@@ -43,114 +43,86 @@ jobs:
           set -euo pipefail
           KIT="$RUNNER_TEMP/kit"
           mkdir -p "$KIT/GITHUB-VALIDATED-APK"
-
-          # Exact tracked source from the validated merge commit, without .git metadata.
           git archive "$VALIDATED_COMMIT" | tar -x -C "$KIT"
-
           MAIN_APK=$(find "$RUNNER_TEMP/main-apk" -type f -name '*.apk' | head -1)
           MSG_APK=$(find "$RUNNER_TEMP/messenger-apk" -type f -name '*.apk' | head -1)
           test -n "$MAIN_APK" && test -f "$MAIN_APK"
           test -n "$MSG_APK" && test -f "$MSG_APK"
-
           cp "$MAIN_APK" "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Native-1.2.0-Main-GitHub-Validated-Android-Debug.apk"
           cp "$MSG_APK" "$KIT/GITHUB-VALIDATED-APK/Private-Gather-Messenger-Native-1.2.0-GitHub-Validated-Android-Debug.apk"
-
-          cat > "$KIT/BUILD-AND-TEST.txt" <<'EOF'
-Private Gather Native 1.2.0 — Main App + Dedicated Messenger V2
-FAST PHYSICAL ANDROID TEST PATH
-
-This kit contains the exact GitHub-validated source plus BOTH GitHub-built APKs.
-Do not run expo prebuild or Gradle for the normal physical test path.
-
-Expected extraction root on Windows:
-C:\PrivateGatherNative
-
-PowerShell Window 1 — prepare and install both GitHub APKs:
-Set-Location "C:\PrivateGatherNative"
-npm install --no-audit --no-fund
-npm run check:ready
-npm run typecheck
-adb devices
-adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Native-1.2.0-Main-GitHub-Validated-Android-Debug.apk"
-adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Messenger-Native-1.2.0-GitHub-Validated-Android-Debug.apk"
-adb reverse tcp:8081 tcp:8081
-adb reverse tcp:8082 tcp:8082
-
-PowerShell Window 2 — Main App Metro (leave running):
-Set-Location "C:\PrivateGatherNative"
-$env:PG_APP_FLAVOR="main"
-npx expo start --dev-client --clear --port 8081
-
-PowerShell Window 3 — Messenger Metro (leave running):
-Set-Location "C:\PrivateGatherNative"
-$env:PG_APP_FLAVOR="messenger"
-npx expo start --dev-client --clear --port 8082
-
-Back in PowerShell Window 1 — connect each installed dev client to its own Metro server:
-adb reverse tcp:8081 tcp:8081
-adb reverse tcp:8082 tcp:8082
-adb shell am force-stop com.privoralabs.privategather
-adb shell am force-stop com.privoralabs.privategather.messenger
-adb shell am start -a android.intent.action.VIEW -d "privategather://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081" com.privoralabs.privategather
-adb shell am start -a android.intent.action.VIEW -d "privategathermessenger://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8082" com.privoralabs.privategather.messenger
-
-After each app has connected to its Metro server once, normal relaunch commands are:
-adb shell monkey -p com.privoralabs.privategather -c android.intent.category.LAUNCHER 1
-adb shell monkey -p com.privoralabs.privategather.messenger -c android.intent.category.LAUNCHER 1
-
-Version checks:
-adb shell dumpsys package com.privoralabs.privategather | Select-String "versionName|versionCode"
-adb shell dumpsys package com.privoralabs.privategather.messenger | Select-String "versionName|versionCode"
-Expected versionName for both: 1.2.0
-
-If adb install reports only a signature mismatch, uninstall that exact package and reinstall its included APK. Uninstalling clears local app data for that package.
-EOF
-
-          cat > "$KIT/VERIFICATION-REPORT.txt" <<EOF
-Private Gather Native 1.2.0 — Two-App Messenger V2 Verification
-
-Exact merged source commit: $VALIDATED_COMMIT
-Exact main validation run: $VALIDATION_RUN
-PR validation run: 33991594013
-Validated PR head: ac341af77ceb3c7e591bef118053edb317373639
-
-GitHub validation contract:
-- public repository safety gate
-- exact dependency install
-- readiness check for main and Messenger
-- TypeScript for main and Messenger
-- Expo config for Android main and Messenger
-- Android prebuild for main and Messenger
-- Kotlin compile gate for main and Messenger
-- assembleDebug for main and Messenger
-- APK artifact upload for main and Messenger
-- iOS prebuild for main and Messenger
-- CocoaPods for main and Messenger
-- Xcode workspace verification for main and Messenger
-
-Android application IDs:
-- Main: com.privoralabs.privategather
-- Messenger: com.privoralabs.privategather.messenger
-
-Deep-link schemes:
-- Main: privategather
-- Messenger: privategathermessenger
-
-Prepared/GitHub-validated only. Device acceptance is still required before promotion to live/confirmed.
-EOF
-
+          printf '%s\n' \
+            'Private Gather Native 1.2.0 — Main App + Dedicated Messenger V2' \
+            'FAST PHYSICAL ANDROID TEST PATH' \
+            '' \
+            'This kit contains the exact GitHub-validated source plus BOTH GitHub-built APKs.' \
+            'Do not run expo prebuild or Gradle for the normal physical test path.' \
+            '' \
+            'Expected extraction root: C:\PrivateGatherNative' \
+            '' \
+            'WINDOW 1 — PREPARE / INSTALL' \
+            'Set-Location "C:\PrivateGatherNative"' \
+            'npm install --no-audit --no-fund' \
+            'npm run check:ready' \
+            'npm run typecheck' \
+            'adb devices' \
+            'adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Native-1.2.0-Main-GitHub-Validated-Android-Debug.apk"' \
+            'adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\Private-Gather-Messenger-Native-1.2.0-GitHub-Validated-Android-Debug.apk"' \
+            'adb reverse tcp:8081 tcp:8081' \
+            'adb reverse tcp:8082 tcp:8082' \
+            '' \
+            'WINDOW 2 — MAIN METRO (leave running)' \
+            'Set-Location "C:\PrivateGatherNative"' \
+            '$env:PG_APP_FLAVOR="main"' \
+            'npx expo start --dev-client --clear --port 8081' \
+            '' \
+            'WINDOW 3 — MESSENGER METRO (leave running)' \
+            'Set-Location "C:\PrivateGatherNative"' \
+            '$env:PG_APP_FLAVOR="messenger"' \
+            'npx expo start --dev-client --clear --port 8082' \
+            '' \
+            'WINDOW 1 — CONNECT EACH DEV CLIENT' \
+            'adb reverse tcp:8081 tcp:8081' \
+            'adb reverse tcp:8082 tcp:8082' \
+            'adb shell am force-stop com.privoralabs.privategather' \
+            'adb shell am force-stop com.privoralabs.privategather.messenger' \
+            'adb shell am start -a android.intent.action.VIEW -d "privategather://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081" com.privoralabs.privategather' \
+            'adb shell am start -a android.intent.action.VIEW -d "privategathermessenger://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8082" com.privoralabs.privategather.messenger' \
+            '' \
+            'NORMAL RELAUNCH AFTER FIRST METRO CONNECTION' \
+            'adb shell monkey -p com.privoralabs.privategather -c android.intent.category.LAUNCHER 1' \
+            'adb shell monkey -p com.privoralabs.privategather.messenger -c android.intent.category.LAUNCHER 1' \
+            '' \
+            'VERSION CHECKS' \
+            'adb shell dumpsys package com.privoralabs.privategather | Select-String "versionName|versionCode"' \
+            'adb shell dumpsys package com.privoralabs.privategather.messenger | Select-String "versionName|versionCode"' \
+            'Expected versionName for both: 1.2.0' \
+            > "$KIT/BUILD-AND-TEST.txt"
+          printf '%s\n' \
+            'Private Gather Native 1.2.0 — Two-App Messenger V2 Verification' \
+            '' \
+            "Exact merged source commit: $VALIDATED_COMMIT" \
+            "Exact main validation run: $VALIDATION_RUN" \
+            'PR validation run: 33991594013' \
+            'Validated PR head: ac341af77ceb3c7e591bef118053edb317373639' \
+            '' \
+            'Validated gates: public safety; exact dependencies; readiness; TypeScript; Expo config; Android prebuild; Kotlin compile; assembleDebug; APK artifact upload; iOS prebuild; CocoaPods; Xcode workspace verification — independently for main and Messenger where applicable.' \
+            'Main Android package: com.privoralabs.privategather' \
+            'Messenger Android package: com.privoralabs.privategather.messenger' \
+            'Main scheme: privategather' \
+            'Messenger scheme: privategathermessenger' \
+            '' \
+            'Prepared/GitHub-validated only. Device acceptance is still required before promotion to live/confirmed.' \
+            > "$KIT/VERIFICATION-REPORT.txt"
           (
             cd "$KIT"
             find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           )
-
           mkdir -p "$RUNNER_TEMP/out"
           (
             cd "$KIT"
             zip -qr "$RUNNER_TEMP/out/$KIT_NAME.zip" .
           )
           sha256sum "$RUNNER_TEMP/out/$KIT_NAME.zip" > "$RUNNER_TEMP/out/$KIT_NAME-SHA256.txt"
-
           unzip -t "$RUNNER_TEMP/out/$KIT_NAME.zip" >/dev/null
           echo "Validated source commit: $VALIDATED_COMMIT"
           echo "Kit SHA-256: $(cut -d' ' -f1 "$RUNNER_TEMP/out/$KIT_NAME-SHA256.txt")"
