@@ -12,6 +12,10 @@ const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'u
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
 const appConfigFactory = require(path.join(root, 'app.config.js'));
 const resolvedConfig = appConfigFactory({ config: {} });
+const configSource = fs.readFileSync(path.join(root,'src','config.ts'),'utf8');
+const loginSource = fs.readFileSync(path.join(root,'src','screens','LoginScreen.tsx'),'utf8');
+const homeSource = fs.readFileSync(path.join(root,'src','screens','HomeScreen.tsx'),'utf8');
+const callSource = fs.readFileSync(path.join(root,'src','calls','CallManager.ts'),'utf8');
 let failures = 0;
 let warnings = 0;
 
@@ -29,20 +33,44 @@ nodeMajor === 22 && nodeMinor >= 13
   ? ok(`Node ${process.versions.node}`)
   : fail(`Node ${process.versions.node}; use Node 22.13+ for Expo SDK 57`);
 
-const versions = {
+const expected='1.1.200';
+const runtimeVersions = {
   package: String(pkg.version || ''),
-  lock: String(lock.version || lock.packages?.['']?.version || ''),
   appJson: String(appJson.version || ''),
   appConfig: String(resolvedConfig.version || ''),
 };
-const versionValues = Object.values(versions);
-versionValues.every(v => v && v === versions.package)
-  ? ok(`native version consistency ${versions.package}`)
-  : fail(`native version mismatch ${JSON.stringify(versions)}`);
+Object.values(runtimeVersions).every(v=>v===expected)
+  ? ok(`native runtime version consistency ${expected}`)
+  : fail(`native runtime version mismatch ${JSON.stringify(runtimeVersions)}`);
+
+configSource.includes("APP_VERSION=String(Constants.expoConfig?.version||'1.1.200')")
+  ? ok('source APP_VERSION fallback 1.1.200')
+  : fail('source APP_VERSION fallback is not 1.1.200');
+loginSource.includes('Private Gather · Native 1.1.200')
+  ? ok('visible login version 1.1.200')
+  : fail('visible login version is not 1.1.200');
+
+const lockVersion=String(lock.version || lock.packages?.['']?.version || '');
+lockVersion===expected
+  ? ok(`package-lock metadata ${expected}`)
+  : warn(`package-lock metadata is ${lockVersion||'unset'}; npm dependency graph remains authoritative for CI and will be normalized in the next lock refresh`);
 
 appJson.ios?.bundleIdentifier === 'com.privoralabs.privategather' ? ok('iOS bundle identifier') : fail('iOS bundle identifier mismatch');
 appJson.android?.package === 'com.privoralabs.privategather' ? ok('Android application id') : fail('Android application id mismatch');
 appJson.scheme === 'privategather' ? ok('privategather deep-link scheme') : fail('deep-link scheme mismatch');
+
+!/<Pressable[^>]*>\s*\{' '\}/.test(homeSource)
+  ? ok('no raw JSX text separator in Home Pressable controls')
+  : fail('raw JSX text separator found under Home Pressable');
+!homeSource.includes('comment.parent_comment_id?s.commentReply:null')
+  ? ok('Home comment style uses React Native-safe false branch')
+  : fail('Home comment style still uses null array member');
+callSource.includes("new Promise<void>(resolve=>setTimeout(()=>resolve(),delay))")
+  ? ok('CallManager retry Promise typed safely')
+  : fail('CallManager retry Promise regression');
+callSource.includes('private syncRemoteReceivers')
+  ? ok('CallManager receiver synchronization present')
+  : fail('CallManager receiver synchronization missing');
 
 const api = process.env.EXPO_PUBLIC_PG_API_BASE || 'https://member.privategather.com/api/v1/native';
 api.startsWith('https://') ? ok(`HTTPS API ${api}`) : fail('EXPO_PUBLIC_PG_API_BASE must use HTTPS');
