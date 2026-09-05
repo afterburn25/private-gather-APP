@@ -14,15 +14,15 @@
 - Repository: `afterburn25/private-gather-APP`
 - Default/authoritative branch: `main`
 - Repository is public.
-- Current native package version in `package.json`: **1.1.199**
+- Current native package version in the control record: **1.1.199**
 
-### Current GitHub-validated source baseline
+### Current GitHub-validated source baseline in control record
 - Validated source commit: `e95a2815c8410a7261b11ee7f32c7813b42aab82`
 - Commit title: **Establish GitHub native validation gate**
 - Status: **GitHub-validated candidate**
-- This is not automatically the confirmed-live or device-tested baseline.
+- Documentation-only commits do not supersede a validated app-source baseline.
 
-### Validation evidence
+### Validation evidence in control record
 - Workflow: **Native Validate**
 - Run ID: **33973554381**
 - Run number: **12**
@@ -35,15 +35,13 @@
 - Artifact ID: `9971835782`
 - GitHub artifact ZIP SHA-256: `3ef5e8fe40a24944b4af6951d0bcf918b40b53adba81a0617a685f30ac7a00e3`
 
-The Android job performs exact dependency install, readiness, TypeScript, Expo config, Android prebuild, Kotlin compile, `assembleDebug`, and artifact upload. The iOS job performs exact dependency install, readiness, TypeScript, iOS prebuild, CocoaPods, and Xcode workspace verification.
-
-**Rule:** A future source change requires a fresh successful run on that exact new commit. Do not reuse Run 12 to validate later source.
+**Rule:** Any future app-source change requires a fresh successful validation run on that exact new commit.
 
 ---
 
 ## 2. Native architecture to preserve
 
-Private Gather native is a real React Native/Expo application rather than a WebView wrapper.
+Private Gather native is a real React Native/Expo product rather than a WebView wrapper.
 
 Current core stack includes:
 - Expo SDK 57
@@ -62,264 +60,228 @@ Current core stack includes:
 - production build/readiness scripts
 - GitHub Actions validation
 
-Bundle/application ID historically used for the native product: `com.privoralabs.privategather`
-
-Do not replace working transport/auth/update foundations merely to restyle screens.
+Do not replace working auth, backend authority, realtime, push, TURN/WebRTC or privacy rules without a deliberate architecture reason.
 
 ---
 
-## 3. Product direction
+## 3. NEW DURABLE PRODUCT ARCHITECTURE — TWO NATIVE APPS
 
-Approved native/web brand direction:
+Decision date: **2026-09-05**.
+
+Private Gather is moving to a **two-native-app architecture**, analogous to a social app plus a dedicated Messenger app.
+
+### App A — Private Gather
+Owns the broader community/product experience:
+- Home/feed
+- Discover/members
+- Events/gatherings
+- Clubs/groups
+- Profile/account
+- Notifications outside communication-specific alerts
+- verification, privacy and safety settings
+- entry points that open the dedicated Messenger app for conversations/calls
+
+### App B — Private Gather Messenger
+Owns all direct communication:
+- conversation list
+- 1:1 messaging
+- group messaging
+- speaker identity selection
+- typing
+- presence
+- sent/delivered/read state
+- reactions
+- replies
+- unsend/revoke
+- attachments/media/live selfie where retained
+- voice notes
+- voice calling
+- video calling
+- call history
+- incoming-call UI
+- ringtone/ringback/audio routing
+- camera switching
+- CallKit/Android calling integration
+- messaging/call notifications
+
+### Shared backend/platform
+Both apps use the same authoritative services and data model:
+- Laravel account/API authority
+- member/profile/speaker identity
+- media/privacy/verification rules
+- Reverb/WebSocket realtime
+- Redis/queues as appropriate
+- APNs/FCM/push gateway
+- WebRTC signaling
+- TURN/STUN infrastructure
+
+Business truth must live in the backend/domain contract, not be independently duplicated in each app.
+
+### Cross-app authentication
+Do not use plaintext token sharing or deprecated shared-user mechanisms.
+- Each app owns secure local credential storage.
+- First sign-in can authenticate each app normally.
+- Seamless handoff should use a short-lived, single-use backend-issued authorization handoff through verified App Links/Universal Links where supported.
+- Logging out/revoking a session must be enforceable server-side across both apps.
+
+### Cross-app navigation
+- Tapping Messages in Private Gather opens Private Gather Messenger.
+- Tapping a member/message notification opens the exact Messenger conversation.
+- Tapping voice/video call entry points opens the exact Messenger call flow.
+- Messenger can deep-link back to the corresponding member/event/profile in the main Private Gather app when appropriate.
+
+---
+
+## 4. MESSENGER PWA STATUS
+
+The Messenger PWA is **no longer a parity target**.
+
+Permanent rules:
+- New messaging/calling work is native-first.
+- PWA/browser limitations must not constrain the native architecture.
+- Existing PWA/web Messenger may remain during migration as legacy/maintenance-only.
+- Do not spend development time reproducing new native Messenger behavior in PWA unless the user explicitly requests it.
+- The native Messenger app is intended to replace the PWA.
+
+---
+
+## 5. MESSAGING REBUILD DIRECTION
+
+The current accumulated messaging/call patch line is not the architectural basis for the future Messenger product.
+
+The replacement should be a clean Messaging VNext system with:
+- one normalized conversation/message domain model
+- cursor-based message history
+- optimistic native sends with stable client-generated IDs/idempotency keys
+- durable server acknowledgement
+- one realtime event envelope/version contract
+- ordered/deduplicated realtime delivery
+- reconnect/catch-up from a server cursor
+- local native message cache/offline queue
+- authoritative read/delivery receipts
+- throttled realtime typing state rather than repeated uncontrolled requests
+- deterministic presence state
+- media upload pipeline separated from message creation
+- call signaling separated cleanly from chat rendering/state
+- one incoming-call coordinator per device/session
+- native full-screen camera/video surfaces designed independently from legacy web markup
+- instrumentation for send latency, websocket reconnects, missed events and call setup failures
+
+Do not carry forward old UI timers, repeated tail-scroll timers, duplicate browser-tab ringtone ownership logic, or PWA-specific code into the new native Messenger core.
+
+---
+
+## 6. Product direction
+
+Approved native brand direction:
 - dark midnight/black base
 - premium neon pink → violet → cyan accents
 - heart + lock Private Gather brand mark
 - premium/privacy-first visual identity
 - tagline: **Real People. Private Moments.**
 
-Native product direction:
-- Home
-- Discover
-- Messages
-- Events
-- Profile
-- Notifications
-- Clubs
-- member/event/club detail
-- fullscreen voice/video calling
-- privacy/safety-first settings
-
-The native app should become the best version of Private Gather, not merely duplicate the website.
+The native apps should become the best version of Private Gather, not merely duplicate the website.
 
 ---
 
-## 4. Working systems / protected behavior
+## 7. Native update policy
 
-Treat these as regression-sensitive:
-- authentication/session foundation
-- native API contracts
-- privacy-safe API payloads
-- Reverb realtime
-- message/typing/read/reaction realtime behavior
-- WebRTC call signaling/media path
-- stable call UUID mapping
-- CallKeep/CallKit/ConnectionService integration seams
-- APNs/PushKit/FCM push architecture
-- staged native update architecture
-- working web/PWA call transport
-- production endpoint independence from local Metro
-
-When a request does not require touching one of these systems, avoid rewriting it.
-
----
-
-## 5. Native update policy
-
-Private Gather's desired controlled release model:
-
-### Admin devices
-- Admin releases can become eligible immediately.
-- Admins can test frequent development updates.
-
-### Member devices
-- Members receive no development release until an administrator explicitly chooses **Release to Members**.
-- Member rollout should be deterministic and gradual to avoid server spikes.
-- Devices should jump to the newest compatible eligible release rather than installing every intermediate admin build.
+Private Gather's controlled release model remains:
+- Admin releases can become eligible immediately for testing.
+- Members receive no development release until explicitly released.
+- Member rollout should be deterministic and gradual.
+- Devices should jump to the newest compatible eligible release rather than install every intermediate admin build.
 - Binary/store updates and OTA JS/assets updates remain distinct.
 - OTA updates must respect runtime compatibility.
-- Production signing/store rules remain Apple/Google controlled.
 
-Do not confuse "GitHub build artifact" with "released to members."
+Do not confuse a GitHub artifact with a member release.
 
 ---
 
-## 6. GitHub-first testing discipline
+## 8. GitHub-first testing discipline
 
 Before native handoff, the exact candidate commit must pass the mandatory GitHub workflow defined in `AI-WORKFLOW.md`.
 
-Current mandatory CI covers:
-- public-repository safety
-- Node/toolchain setup
-- exact `npm ci`
-- readiness
-- TypeScript
-- Expo config
-- Android clean prebuild
-- Kotlin compile
-- Android debug APK build
-- Android artifact upload
-- iOS clean prebuild
-- CocoaPods
-- Xcode workspace verification
+CI does not replace physical-device testing for camera, microphone, audio routing, notifications, lock-screen calls, background behavior, Wi-Fi/cellular handoff or manufacturer-specific restrictions.
 
-Current CI does **not yet prove**:
-- physical camera quality
-- microphone/audio routing
-- Bluetooth
-- real Wi-Fi ↔ cellular handoff
-- manufacturer battery restrictions
-- actual FCM/APNs timing
-- Android lock-screen behavior
-- iOS PushKit/CallKit runtime behavior
-
-Those remain device tests.
-
-Recommended future GitHub additions:
-- API contract tests
-- unit tests
-- Android emulator smoke launch
-- Maestro UI flows
-- screenshot regressions
-- messaging lifecycle integration
-- call lifecycle integration
-- production endpoint gate
-- iOS simulator UI checks
+For the future two-app architecture, each native app must eventually have its own exact build/validation artifact and cross-app deep-link/auth handoff tests.
 
 ---
 
-## 7. Local-development vs distributed-build boundary
+## 9. Local-development vs distributed-build boundary
 
 Development builds may use Metro locally.
 
 Distributed preview/production builds must:
 - run without the developer PC
-- contain bundled JS/runtime as appropriate
 - use public production/test HTTPS endpoints
 - use public secure WebSocket endpoints
-- never require `localhost`, `127.0.0.1`, or a private LAN host
-- not depend on Metro being online
-
-The servers that must remain online belong on production infrastructure (Laravel/API, Reverb, queues, Redis as used, push gateway, TURN), not on the developer Windows PC.
+- never require localhost, LAN addresses or Metro
+- keep production infrastructure on servers, not the developer Windows PC
 
 ---
 
-## 8. Android-first / iOS strategy
+## 10. Android-first / iOS strategy
 
 Current practical strategy:
-1. Stabilize shared product behavior on Android.
-2. Keep shared code platform-neutral.
-3. Isolate Android-only/iOS-only adapters.
-4. Reuse the stable shared app on iOS.
-5. Validate Apple-specific behavior on a real iPhone.
-
-Android success makes iOS substantially easier because most UI, API, realtime, messaging, state, media, and WebRTC logic is shared.
-
-Real iPhone testing is still required before iOS public release for PushKit/APNs/CallKit, camera/mic/audio routing, lock-screen/background behavior, biometrics, and TestFlight behavior.
+1. Stabilize shared domain/protocol behavior.
+2. Build the dedicated Messenger native app Android-first.
+3. Keep shared core platform-neutral.
+4. Isolate Android/iOS calling, push and audio adapters.
+5. Validate the same Messenger product on iPhone before iOS release.
+6. Keep the main Private Gather app focused on community functionality and clean Messenger handoff.
 
 ---
 
-## 9. Laravel/backend authority boundary
+## 11. Laravel/backend authority boundary
 
 The native GitHub repository does **not** establish the current Laravel live/source version.
 
-For future Laravel work:
-- retrieve the current authoritative Laravel core/repository/package
+Before implementing the new Messaging VNext backend:
+- retrieve the current authoritative Laravel core/package/repository
 - read its `VERSION`
-- inspect the current release/update manifest
-- preserve sequential upgrade boundaries
-- preserve migration discipline
-- preserve exact reconstruction/hash gates
-- never assume a Laravel version merely because the native app version is newer/similar
-
-If a previous handoff, Library artifact, or repository exists for Laravel, use the newest authoritative source rather than old chat memory.
+- inspect existing conversations/messages/reactions/attachments/calls/realtime migrations and controllers
+- design additive migrations/protocol changes from that exact baseline
+- preserve Update Center manifest/hash/allow-list discipline
 
 ---
 
-## 10. Candidate promotion rules
+## 12. Candidate promotion rules
 
 Use these statuses:
+- Prepared candidate
+- GitHub-validated candidate
+- Device-tested candidate
+- Confirmed live baseline
+- Quarantined
 
-### Prepared candidate
-Created but not GitHub validated.
-
-### GitHub-validated candidate
-Exact required CI passed.
-
-### Device-tested candidate
-Physical device acceptance passed.
-
-### Confirmed live baseline
-User explicitly says the candidate is accepted/working and promotes it.
-
-### Quarantined
-Failed candidate; do not use as a new baseline.
-
-**Never promote automatically.**
+Never promote automatically.
 
 ---
 
-## 11. Required future-chat startup
+## 13. Current known issue / superseded patch direction
 
-When a new chat begins, the user can say:
+The recent native call/video/ringtone repair line continued to show device issues including incomplete full-screen video behavior, preview blinking and ringtone restart behavior. Rather than continue stacking incremental patches, the user chose on 2026-09-05 to stop that direction and rebuild messaging/calling on a cleaner native-first architecture.
 
-> Continue Private Gather using the authoritative project workflow. Read AI-WORKFLOW.md, RELEASE-STATE.json, and the current Private Gather master handoff first. Check GitHub before changing native source. Use GitHub-first validation and do not call anything live unless I explicitly accept it.
-
-The assistant should then:
-1. read these three records
-2. inspect current GitHub state
-3. retrieve separate Laravel authority if backend work is requested
-4. identify the exact source baseline
-5. proceed without making the user re-explain the entire history
+Any unfinished Rev7-style patch work should not be treated as the architecture for Messaging VNext.
 
 ---
 
-# Update section for future handoffs
+## 14. Next planned work
 
-Whenever material project state changes, replace/update the sections below.
-
-## A. Newly accepted live baseline
-- Product area:
-- Version:
-- Source commit/package:
-- Date:
-- User acceptance wording:
-- Validation evidence:
-
-## B. Newest prepared candidate
-- Version:
-- Title:
-- Built from:
-- Exact source commit/package SHA:
-- Major changes:
-- Database changes:
-- GitHub run:
-- Device tests still required:
-- Status:
-
-## C. Quarantined candidates
-- Version/build:
-- Reason:
-- Failure evidence:
-- Safe fallback:
-
-## D. Current known issues
-- Issue:
-- Platform:
-- Reproduction:
-- Evidence/log:
-- Suspected surface:
-- Status:
-
-## E. Next planned work
-- Priority 1:
-- Priority 2:
-- Priority 3:
-
-## F. Durable decisions
-Record architectural/product decisions that future chats must preserve.
-
-## G. Artifact register
-For each important package/artifact:
-- filename/name
-- version
-- SHA-256/digest
-- source commit
-- GitHub run/artifact ID if applicable
-- status (prepared / validated / device-tested / live / quarantined)
+1. Retrieve the exact current authoritative Laravel/backend baseline.
+2. Inventory the existing message/conversation/call schema and API contracts worth preserving for data compatibility.
+3. Write the Messaging VNext protocol/schema before UI implementation.
+4. Build a dedicated Private Gather Messenger native application shell with its own bundle IDs/package IDs and shared core modules.
+5. Implement realtime conversation/message lifecycle first.
+6. Add media, reactions, receipts, typing/presence and speaker identity.
+7. Implement calls as a separate communication subsystem after messaging lifecycle is stable.
+8. Add main-app ↔ Messenger secure auth/deep-link handoff.
+9. Validate Android then iOS.
 
 ---
 
-## 12. Handoff maintenance rule
+## 15. Handoff maintenance rule
 
 Update this handoff after:
 - a release becomes confirmed live
@@ -330,4 +292,4 @@ Update this handoff after:
 - a major architecture decision changes
 - a persistent device issue is discovered/resolved
 
-Do not fill the handoff with every minor conversational detail. Keep only facts needed to resume development correctly.
+Do not fill the handoff with every minor conversational detail. Keep facts needed to resume development correctly.
