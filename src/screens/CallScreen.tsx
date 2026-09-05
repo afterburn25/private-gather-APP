@@ -61,12 +61,12 @@ function ActionButton({label,ios,android,onPress,danger=false,success=false,larg
  </Pressable>
 }
 const s=StyleSheet.create({
- page:{...StyleSheet.absoluteFillObject,backgroundColor:'#02050a',overflow:'hidden'},
- remoteVideo:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',backgroundColor:'#02050a'},
+ page:{...StyleSheet.absoluteFill,backgroundColor:'#02050a',overflow:'hidden'},
+ remoteVideo:{...StyleSheet.absoluteFill,width:'100%',height:'100%',backgroundColor:'#02050a'},
  backgroundPhoto:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
  photoShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(2,5,10,.56)'},
- previewStage:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',overflow:'hidden',backgroundColor:'#010308',elevation:1},
- waitingLocal:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%',backgroundColor:'#010308'},
+ previewStage:{...StyleSheet.absoluteFill,width:'100%',height:'100%',overflow:'hidden',backgroundColor:'#010308',elevation:1},
+ waitingLocal:{...StyleSheet.absoluteFill,width:'100%',height:'100%',backgroundColor:'#010308'},
  previewStarting:{flex:1,alignItems:'center',justifyContent:'center',gap:10},previewStartingText:{color:'#d7e1ee',fontSize:11,fontWeight:'800'},
  pipFrame:{position:'absolute',right:16,width:126,height:168,borderRadius:22,borderWidth:2,borderColor:C.cyan,backgroundColor:C.panel,overflow:'hidden',shadowColor:C.cyan,shadowOpacity:.32,shadowRadius:14,elevation:20},
  pip:{width:'100%',height:'100%',backgroundColor:'#010308'},
