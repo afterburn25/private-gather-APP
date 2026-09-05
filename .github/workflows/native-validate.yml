@@ -18,6 +18,7 @@ on:
       - 'plugins/**'
       - 'src/**'
       - 'scripts/**'
+      - 'assets/**'
   push:
     branches: [main]
     paths:
@@ -34,6 +35,7 @@ on:
       - 'plugins/**'
       - 'src/**'
       - 'scripts/**'
+      - 'assets/**'
 
 concurrency:
   group: native-validate-${{ github.ref }}
@@ -131,3 +133,127 @@ jobs:
           WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)
           test -n "$WORKSPACE"
           xcodebuild -list -workspace "$WORKSPACE"
+
+  package-main:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [public-safety, android, ios-prebuild]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: private-gather-main-android-debug
+          path: ${{ runner.temp }}/main-apk
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: private-gather-messenger-android-debug
+          path: ${{ runner.temp }}/messenger-apk
+
+      - name: Assemble exact-main two-app build kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          KIT_NAME="Private-Gather-Native-App-${VERSION}-Two-App-Build-Kit"
+          KIT="$RUNNER_TEMP/kit"
+          OUT="$RUNNER_TEMP/out"
+          mkdir -p "$KIT/GITHUB-VALIDATED-APK" "$OUT"
+
+          git archive "$GITHUB_SHA" | tar -x -C "$KIT"
+
+          MAIN_APK=$(find "$RUNNER_TEMP/main-apk" -type f -name '*.apk' | head -1)
+          MSG_APK=$(find "$RUNNER_TEMP/messenger-apk" -type f -name '*.apk' | head -1)
+          test -n "$MAIN_APK" && test -f "$MAIN_APK"
+          test -n "$MSG_APK" && test -f "$MSG_APK"
+
+          MAIN_NAME="Private-Gather-Native-${VERSION}-Main-GitHub-Validated-Android-Debug.apk"
+          MSG_NAME="Private-Gather-Messenger-Native-${VERSION}-GitHub-Validated-Android-Debug.apk"
+          cp "$MAIN_APK" "$KIT/GITHUB-VALIDATED-APK/$MAIN_NAME"
+          cp "$MSG_APK" "$KIT/GITHUB-VALIDATED-APK/$MSG_NAME"
+
+          cat > "$KIT/BUILD-AND-TEST.txt" <<EOF
+          Private Gather Native ${VERSION} — Main App + Dedicated Messenger
+          FAST PHYSICAL ANDROID TEST PATH
+
+          This kit contains the exact GitHub-validated main source plus BOTH APKs produced by the same successful Native Validate run.
+          Expected extraction root: C:\PrivateGatherNative
+
+          WINDOW 1 — PREPARE / INSTALL
+          Set-Location "C:\PrivateGatherNative"
+          npm install --no-audit --no-fund
+          npm run check:ready
+          npm run typecheck
+          adb devices
+          adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\${MAIN_NAME}"
+          adb install -r "C:\PrivateGatherNative\GITHUB-VALIDATED-APK\${MSG_NAME}"
+          adb reverse tcp:8081 tcp:8081
+          adb reverse tcp:8082 tcp:8082
+
+          WINDOW 2 — MAIN METRO (leave running)
+          Set-Location "C:\PrivateGatherNative"
+          \$env:PG_APP_FLAVOR="main"
+          npx expo start --dev-client --clear --port 8081
+
+          WINDOW 3 — MESSENGER METRO (leave running)
+          Set-Location "C:\PrivateGatherNative"
+          \$env:PG_APP_FLAVOR="messenger"
+          npx expo start --dev-client --clear --port 8082
+
+          WINDOW 1 — CONNECT EACH DEV CLIENT
+          adb devices
+          adb reverse tcp:8081 tcp:8081
+          adb reverse tcp:8082 tcp:8082
+          adb shell am force-stop com.privoralabs.privategather
+          adb shell am force-stop com.privoralabs.privategather.messenger
+          adb shell am start -a android.intent.action.VIEW -d "privategather://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081" com.privoralabs.privategather
+          adb shell am start -a android.intent.action.VIEW -d "privategathermessenger://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8082" com.privoralabs.privategather.messenger
+
+          NORMAL RELAUNCH
+          adb shell monkey -p com.privoralabs.privategather -c android.intent.category.LAUNCHER 1
+          adb shell monkey -p com.privoralabs.privategather.messenger -c android.intent.category.LAUNCHER 1
+          EOF
+
+          cat > "$KIT/VERIFICATION-REPORT.txt" <<EOF
+          Private Gather Native ${VERSION} — Automatic Exact-Main Verification
+
+          Source commit: $GITHUB_SHA
+          Native Validate run: $GITHUB_RUN_ID
+          Run number: $GITHUB_RUN_NUMBER
+          Main package: com.privoralabs.privategather
+          Messenger package: com.privoralabs.privategather.messenger
+
+          Required gates completed before this package job:
+          - public repository safety
+          - exact dependency install
+          - readiness and TypeScript for both app flavors
+          - Android Expo prebuild, Kotlin compile, assembleDebug and artifact upload for both flavors
+          - iOS Expo prebuild, CocoaPods and Xcode workspace verification for both flavors
+
+          CI validation is not physical-device acceptance. Promotion to live/confirmed still requires explicit device acceptance.
+          EOF
+
+          printf '%s\n' "$GITHUB_SHA" > "$KIT/SOURCE-COMMIT.txt"
+          (
+            cd "$KIT"
+            find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+
+          (
+            cd "$KIT"
+            zip -qr "$OUT/$KIT_NAME.zip" .
+          )
+          sha256sum "$OUT/$KIT_NAME.zip" > "$OUT/$KIT_NAME-SHA256.txt"
+          unzip -t "$OUT/$KIT_NAME.zip" >/dev/null
+          cp "$KIT/VERIFICATION-REPORT.txt" "$OUT/$KIT_NAME-Verification-Report.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: private-gather-native-two-app-build-kit-${{ github.run_number }}
+          path: ${{ runner.temp }}/out/*
+          if-no-files-found: error
+          retention-days: 14
