@@ -2,11 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+const appConfigFactory = require(path.join(root, 'app.config.js'));
+const resolvedConfig = appConfigFactory({ config: {} });
 let failures = 0;
 let warnings = 0;
 
@@ -19,12 +24,25 @@ function command(name, args=['--version']) {
   return `${r.stdout || ''}${r.stderr || ''}`.trim() || name;
 }
 
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-nodeMajor === 22 ? ok(`Node ${process.versions.node}`) : fail(`Node ${process.versions.node}; use Node 22.13+ for Expo SDK 57`);
-pkg.version === '1.1.188' ? ok('native package version 1.1.188') : fail(`unexpected package version ${pkg.version}`);
-app.ios?.bundleIdentifier === 'com.privoralabs.privategather' ? ok('iOS bundle identifier') : fail('iOS bundle identifier mismatch');
-app.android?.package === 'com.privoralabs.privategather' ? ok('Android application id') : fail('Android application id mismatch');
-app.scheme === 'privategather' ? ok('privategather deep-link scheme') : fail('deep-link scheme mismatch');
+const [nodeMajor,nodeMinor] = process.versions.node.split('.').map(Number);
+nodeMajor === 22 && nodeMinor >= 13
+  ? ok(`Node ${process.versions.node}`)
+  : fail(`Node ${process.versions.node}; use Node 22.13+ for Expo SDK 57`);
+
+const versions = {
+  package: String(pkg.version || ''),
+  lock: String(lock.version || lock.packages?.['']?.version || ''),
+  appJson: String(appJson.version || ''),
+  appConfig: String(resolvedConfig.version || ''),
+};
+const versionValues = Object.values(versions);
+versionValues.every(v => v && v === versions.package)
+  ? ok(`native version consistency ${versions.package}`)
+  : fail(`native version mismatch ${JSON.stringify(versions)}`);
+
+appJson.ios?.bundleIdentifier === 'com.privoralabs.privategather' ? ok('iOS bundle identifier') : fail('iOS bundle identifier mismatch');
+appJson.android?.package === 'com.privoralabs.privategather' ? ok('Android application id') : fail('Android application id mismatch');
+appJson.scheme === 'privategather' ? ok('privategather deep-link scheme') : fail('deep-link scheme mismatch');
 
 const api = process.env.EXPO_PUBLIC_PG_API_BASE || 'https://member.privategather.com/api/v1/native';
 api.startsWith('https://') ? ok(`HTTPS API ${api}`) : fail('EXPO_PUBLIC_PG_API_BASE must use HTTPS');
