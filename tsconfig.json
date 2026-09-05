@@ -17,5 +17,8 @@
     "src/**/*.ts",
     "src/**/*.tsx"
   ],
+  "exclude": [
+    "src/screens/Private-Gather-*.tsx"
+  ],
   "extends": "expo/tsconfig.base"
 }

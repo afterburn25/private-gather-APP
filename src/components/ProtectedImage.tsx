@@ -7,7 +7,7 @@ import {C} from '../theme';
 
 type Props={uri?:string|null;style?:StyleProp<ImageStyle>;fallback?:string;containerStyle?:StyleProp<ViewStyle>;resizeMode?:'cover'|'contain'};
 
-const CACHE_DIR=`${FileSystem.cacheDirectory}private-gather-media-v199/`;
+const CACHE_DIR=`${FileSystem.cacheDirectory}private-gather-media-v200/`;
 const resolved=new Map<string,string>();
 const inflight=new Map<string,Promise<string>>();
 

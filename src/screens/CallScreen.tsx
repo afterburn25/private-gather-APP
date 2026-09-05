@@ -21,7 +21,7 @@ export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,on
         key={`waiting-local-${call.localRevision||0}-${call.localUrl}`}
         style={s.waitingLocal}
         streamURL={call.localUrl}
-        objectFit="cover"
+        objectFit="contain"
         mirror
         zOrder={2}
       />:<View style={s.previewStarting}><NativeIcon ios="video.fill" android="videocam" size={34} color={C.cyan2}/><Text style={s.previewStartingText}>Starting your camera…</Text></View>}
@@ -31,7 +31,7 @@ export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,on
       key={`pip-${call.localRevision||0}-${call.localUrl}`}
       style={s.pip}
       streamURL={call.localUrl}
-      objectFit="contain"
+      objectFit="cover"
       mirror
       zOrder={2}
    /></View>:null}

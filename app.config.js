@@ -11,7 +11,7 @@ module.exports = ({ config }) => ({
   ...config,
   name: 'Private Gather',
   slug: 'private-gather',
-  version: '1.1.199',
+  version: '1.1.200',
   scheme: 'privategather',
   runtimeVersion: process.env.PG_NATIVE_RUNTIME_VERSION || 'pg-native-1',
   updates: {

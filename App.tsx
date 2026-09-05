@@ -77,7 +77,7 @@ function PrivateGatherApp(){
   },[]);
   useEffect(()=>{if(!authed){cleanupRef.current?.();cleanupRef.current=null;setMe(null);setRt(null);setRtConfig(null);rtConfigRef.current=null;return;}let cancelled=false;(async()=>{try{const cleanup=await boot();if(cancelled)cleanup();else cleanupRef.current=cleanup;}catch(e:any){if(!cancelled)setFatal(String(e?.message||e));}})();return()=>{cancelled=true;cleanupRef.current?.();cleanupRef.current=null;}},[authed]);
 
-  const streamState=(state:any)=>{const detail=state.detail;setCall(prev=>{const localUrl=state.local?.toURL?.()||prev?.localUrl;const remoteUrl=state.remote?.toURL?.()||prev?.remoteUrl;return {id:Number(detail?.id||prev?.id||0),mode:(detail?.mode||prev?.mode||'voice') as 'voice'|'video',peer:String(detail?.peer?.display_name||detail?.peer?.name||prev?.peer||'Private Gather member'),status:String(state.status||detail?.status||prev?.status||'connecting'),localUrl,remoteUrl,localRevision:state.local?Number(prev?.localRevision||0)+1:prev?.localRevision,remoteRevision:state.remote?Number(state.remoteRevision||prev?.remoteRevision||0)+1:prev?.remoteRevision,photoUrl:String(detail?.peer?.call_photo_url||detail?.peer?.avatar_url||prev?.photoUrl||'')||undefined,incoming:String(state.status||detail?.status||'')==='active'?false:prev?.incoming};})};
+  const streamState=(state:any)=>{const detail=state.detail;setCall(prev=>{const localUrl=state.local?.toURL?.()||prev?.localUrl;const remoteUrl=state.remote?.toURL?.()||prev?.remoteUrl;return {id:Number(detail?.id||prev?.id||0),mode:(detail?.mode||prev?.mode||'voice') as 'voice'|'video',peer:String(detail?.peer?.display_name||detail?.peer?.name||prev?.peer||'Private Gather member'),status:String(state.status||detail?.status||prev?.status||'connecting'),localUrl,remoteUrl,localRevision:state.local?Number(prev?.localRevision||0)+1:prev?.localRevision,remoteRevision:state.remote?Number(state.remoteRevision||prev?.remoteRevision||0)+1:prev?.remoteRevision,photoUrl:String(detail?.peer?.call_photo_url||detail?.peer?.avatar_url||prev?.photoUrl||'')||undefined,incoming:prev?.incoming};})};
   const callEnded=()=>{stopCallRingtone().catch(()=>{});setCall(null)};
 
   async function showIncoming(payload:any){
@@ -149,16 +149,13 @@ function PrivateGatherApp(){
   async function boot(){
     setFatal('');
 
-    // Realtime is an enhancement. Do not let it delay native calling.
     let cfg:any=rtConfigRef.current;
     loadRealtimeConfig().then(value=>{if(value)cfg=value}).catch(()=>{});
 
-    // Configure calling and start the HTTP incoming-call transport immediately.
     callManager.configure(async callId=>{
       try{
         await stopCallRingtone();
         setCall(prev=>prev&&prev.id===callId?{...prev,status:'answering'}:{id:callId,mode:'voice',peer:'Private Gather member',status:'answering',incoming:true});
-        // Tell the server the call is answered BEFORE loading camera/mic/Reverb.
         await callManager.answer();
         setCall(prev=>prev?{...prev,status:'connecting',incoming:false}:prev);
         const opened=await callManager.open(callId,rtConfigRef.current,streamState,callEnded);
@@ -172,7 +169,6 @@ function PrivateGatherApp(){
 
     const stopIncomingPoll=callManager.watchIncoming((payload:any)=>showIncoming(payload).catch(()=>{}),1200);
 
-    // A full-screen/deep-link launch gets first priority; profile/home data can load afterward.
     const launchedForIncomingCall=!!pendingIncomingLinkRef.current;
     if(pendingIncomingLinkRef.current){
       const pending:any=pendingIncomingLinkRef.current;pendingIncomingLinkRef.current=null;
@@ -250,7 +246,6 @@ function PrivateGatherApp(){
     try{
       setFatal('');
       setCall({id:0,mode,peer:String(peer.display_name||peer.name||'Private Gather member'),status:'starting call',photoUrl:peer.avatar_url,incoming:false});
-      // CallManager creates the server call first, then opens local A/V. Reverb is optional.
       const started=await callManager.start(target,mode,String(peer.display_name||peer.name||'Private Gather member'),rtConfigRef.current,streamState,callEnded);
       setCall(prev=>prev?{...prev,id:Number(started.call_id),mode,peer:String(peer.display_name||peer.name||prev.peer),status:'ringing',incoming:false}:prev);
     }catch(e:any){setFatal(String(e?.message||e));setCall(null)}

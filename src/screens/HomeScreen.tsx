@@ -79,6 +79,7 @@ export default function HomeScreen({me,notificationCount,onNotifications,onMembe
  />;
 }
 
+
 function FeedPhotoView({photo,style,onVerify}:{photo:FeedPhoto;style:any;onVerify:()=>void}){
  return <View style={[style,s.mediaWrap]}>
    <ProtectedImage uri={photo.url} fallback="18+" style={StyleSheet.absoluteFill as any}/>
@@ -167,10 +168,10 @@ function PostCard({post,catalog,speakers,speakerId,onSpeakerChange,onVerify,onMe
    {positive>0?<View style={s.reactedSummary}><Text style={s.reactedLabel}>Reacted</Text>{positiveSummary?<Text numberOfLines={2} style={s.reactedNames}>{positiveSummary}</Text>:null}</View>:null}
    <View style={s.actions}>
      {(!myReaction||myGroup==='positive')?<Pressable style={[s.reactionLauncher,myGroup==='positive'&&s.reactionActive]} onPress={()=>tapReaction('positive')} onLongPress={()=>openPalette('positive')} delayLongPress={430} accessibilityLabel={myGroup==='positive'?`${post.my_reaction_label||'Reaction'} reaction. Tap to change.`:'Like. Tap to react, hold for more.'}>
-       <Text style={s.launcherEmoji}>{myGroup==='positive'?(post.my_reaction_icon||'👍'):'👍'}</Text>{positive>0?<Text style={s.launcherCount}>{positive}</Text>:null}
+       {myGroup==='positive'&&myReaction!=='like'&&post.my_reaction_icon?<Text style={s.launcherEmoji}>{post.my_reaction_icon}</Text>:<NativeIcon ios="hand.thumbsup.fill" android="thumb_up" size={20} color={myGroup==='positive'?C.gold:C.muted}/>}{positive>0?<Text style={s.launcherCount}>{positive}</Text>:null}
      </Pressable>:null}
      {(!myReaction||myGroup==='negative')?<Pressable style={[s.reactionLauncher,s.negativeLauncher,myGroup==='negative'&&s.reactionActive]} onPress={()=>tapReaction('negative')} onLongPress={()=>openPalette('negative')} delayLongPress={430} accessibilityLabel={myGroup==='negative'?`${post.my_reaction_label||'Reaction'} reaction. Tap to change.`:'Dislike. Tap to react, hold for more.'}>
-       <Text style={s.launcherEmoji}>{myGroup==='negative'?(post.my_reaction_icon||'👎'):'👎'}</Text>{negative>0?<Text style={[s.launcherCount,s.negativeCount]}>{negative}</Text>:null}
+       {myGroup==='negative'&&myReaction!=='dislike'&&post.my_reaction_icon?<Text style={s.launcherEmoji}>{post.my_reaction_icon}</Text>:<NativeIcon ios="hand.thumbsdown.fill" android="thumb_down" size={20} color={myGroup==='negative'?'#e19a9a':C.muted}/>}{negative>0?<Text style={[s.launcherCount,s.negativeCount]}>{negative}</Text>:null}
      </Pressable>:null}
      <Pressable style={s.action} onPress={toggleComments} accessibilityLabel="Comments"><NativeIcon ios="bubble.left" android="chat_bubble_outline" size={19} color={C.muted}/><Text style={s.actionText}>{post.comment_count||0}</Text></Pressable>
      <View style={{flex:1}}/><NativeIcon ios="square.and.arrow.up" android="ios_share" size={19} color={C.muted}/>
@@ -180,7 +181,7 @@ function PostCard({post,catalog,speakers,speakerId,onSpeakerChange,onVerify,onMe
    <Pressable onPress={toggleComments} style={s.commentsLink}><Text style={s.commentsLinkText}>{commentLabel}</Text></Pressable>
 
    {expanded?<View style={s.commentsPanel}>
-     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id?s.commentReply:null]}>
+     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id?s.commentReply:false]}>
        <Pressable onPress={()=>onMember(comment.author.id)}><ProtectedImage uri={comment.author.avatar_url} fallback={comment.author.display_name} style={s.commentAvatar}/></Pressable>
        <View style={s.commentBubble}>
          <View style={s.commentHead}><Text style={s.commentName}>{comment.speaker_name||comment.author.display_name}</Text><Text style={s.commentTime}>{comment.created}</Text></View>
