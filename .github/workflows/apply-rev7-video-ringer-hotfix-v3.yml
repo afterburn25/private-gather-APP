@@ -6,6 +6,7 @@ on:
       - hotfix/1.1.200-rev7-video-ringer
     paths:
       - .github/workflows/apply-rev7-video-ringer-hotfix-v3.yml
+      - scripts/apply_rev7_patch.py
 
 permissions:
   contents: write
