@@ -26,10 +26,10 @@ jobs:
         run: python3 scripts/apply-native-messenger-v2-integration.py
       - name: Refresh lockfile
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Commit feature branch
+      - name: Commit feature branch application source
         run: |
           git config user.name "afterburn25"
           git config user.email "afterburn32@gmail.com"
-          git add App.tsx src/calls/CallManager.ts plugins/withPrivateGatherNativeCalling.js scripts/check-ready.mjs .github/workflows/native-validate.yml package-lock.json
+          git add App.tsx src/calls/CallManager.ts plugins/withPrivateGatherNativeCalling.js scripts/check-ready.mjs package-lock.json
           git commit -m "Integrate Private Gather Messenger V2 two-app runtime"
           git push origin HEAD:feature/native-messenger-v2
