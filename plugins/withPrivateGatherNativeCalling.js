@@ -65,7 +65,7 @@ import expo.modules.notifications.service.ExpoFirebaseMessagingService
 
 class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
   companion object {
-    private const val CHANNEL_ID = "pg-calls-v199"
+    private const val CHANNEL_ID = "pg-messenger-calls-v120"
   }
 
   override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -89,6 +89,13 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
   }
 
   private fun showIncomingCall(data: Map<String, String>) {
+    val callId = data["call_id"] ?: return
+    val now = System.currentTimeMillis()
+    val prefs = getSharedPreferences("private-gather-messenger-call-alert-v120", Context.MODE_PRIVATE)
+    val lastId = prefs.getString("last_call_id", "") ?: ""
+    val lastAt = prefs.getLong("last_call_at", 0L)
+    if(lastId == callId && now - lastAt < 120000L) return
+    prefs.edit().putString("last_call_id",callId).putLong("last_call_at",now).apply()
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     val sound = Uri.parse("android.resource://$packageName/raw/calling")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -105,11 +112,10 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
       manager.createNotificationChannel(channel)
     }
 
-    val callId = data["call_id"] ?: return
     val caller = data["caller_name"] ?: "Private Gather member"
     val mode = if (data["mode"] == "video") "video" else "voice"
     val uri = Uri.parse(
-      "privategather://incoming-call?call_id=" + Uri.encode(callId) +
+      "privategathermessenger://incoming-call?call_id=" + Uri.encode(callId) +
       "&mode=" + Uri.encode(mode) +
       "&caller_id=" + Uri.encode(data["caller_id"] ?: "") +
       "&caller_name=" + Uri.encode(caller)
@@ -146,6 +152,7 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
       .setFullScreenIntent(pending, true)
       .setOngoing(true)
       .setAutoCancel(false)
+      .setOnlyAlertOnce(true)
       .setSound(sound)
       .setVibrate(longArrayOf(0,700,300,700,300,1100))
       .setTimeoutAfter(120000L)
@@ -163,6 +170,8 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -184,6 +193,8 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
   private var camera:Camera?=null
   private lateinit var preview:TextureView
   private var videoCall=false
+  private var previewBufferWidth=0
+  private var previewBufferHeight=0
   private fun dp(value:Int):Int=(value*resources.displayMetrics.density).toInt()
   private fun rounded(color:Int):GradientDrawable=GradientDrawable().apply{shape=GradientDrawable.RECTANGLE;setColor(color);cornerRadius=dp(32).toFloat()}
 
@@ -224,21 +235,29 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
     for(i in 0 until Camera.getNumberOfCameras()){val info=Camera.CameraInfo();Camera.getCameraInfo(i,info);if(info.facing==Camera.CameraInfo.CAMERA_FACING_FRONT)return i}
     return -1
   }
+  private fun applyPreviewCenterCrop(){
+    val viewWidth=preview.width;val viewHeight=preview.height
+    if(viewWidth<=0||viewHeight<=0||previewBufferWidth<=0||previewBufferHeight<=0)return
+    val centerX=viewWidth/2f;val centerY=viewHeight/2f
+    val scale=kotlin.math.max(viewWidth.toFloat()/previewBufferWidth.toFloat(),viewHeight.toFloat()/previewBufferHeight.toFloat())
+    val matrix=Matrix();matrix.setScale(scale,scale,centerX,centerY);preview.setTransform(matrix)
+  }
   private fun startCamera(){
     if(!videoCall||camera!=null||checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED||!preview.isAvailable)return
     try{
       val id=frontCameraId();if(id<0)return
       val info=Camera.CameraInfo();Camera.getCameraInfo(id,info)
-      val opened=Camera.open(id)
-      val params=opened.parameters
-      params.supportedPreviewSizes?.minByOrNull{abs((it.width*it.height)-(640*480))}?.let{params.setPreviewSize(it.width,it.height)}
+      val opened=Camera.open(id);val params=opened.parameters
+      val chosen=params.supportedPreviewSizes?.minByOrNull{abs((it.width.toFloat()/it.height.toFloat())-(16f/9f))*100000f + abs((it.width*it.height)-(1280*720)).toFloat()/1000f}
+      if(chosen!=null)params.setPreviewSize(chosen.width,chosen.height)
       if(params.isZoomSupported)params.zoom=0
       opened.parameters=params
       val rotation=windowManager.defaultDisplay.rotation
       val degrees=when(rotation){Surface.ROTATION_90->90;Surface.ROTATION_180->180;Surface.ROTATION_270->270;else->0}
       var result=(info.orientation+degrees)%360;result=(360-result)%360
       opened.setDisplayOrientation(result)
-      opened.setPreviewTexture(preview.surfaceTexture);opened.startPreview();camera=opened
+      if(chosen!=null){previewBufferWidth=if(result==90||result==270)chosen.height else chosen.width;previewBufferHeight=if(result==90||result==270)chosen.width else chosen.height}
+      opened.setPreviewTexture(preview.surfaceTexture);opened.startPreview();camera=opened;preview.post{applyPreviewCenterCrop()}
     }catch(_:Throwable){stopCamera()}
   }
   private fun stopCamera(){try{camera?.stopPreview()}catch(_:Throwable){};try{camera?.release()}catch(_:Throwable){};camera=null}
@@ -246,7 +265,7 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
   override fun onPause(){stopCamera();super.onPause()}
   override fun onDestroy(){stopCamera();super.onDestroy()}
   override fun onSurfaceTextureAvailable(surface:SurfaceTexture,width:Int,height:Int){startCamera()}
-  override fun onSurfaceTextureSizeChanged(surface:SurfaceTexture,width:Int,height:Int){}
+  override fun onSurfaceTextureSizeChanged(surface:SurfaceTexture,width:Int,height:Int){applyPreviewCenterCrop()}
   override fun onSurfaceTextureDestroyed(surface:SurfaceTexture):Boolean{stopCamera();return true}
   override fun onSurfaceTextureUpdated(surface:SurfaceTexture){}
 
@@ -359,6 +378,7 @@ module.exports = function withPrivateGatherNativeCalling(config) {
   });
 
   config = withAndroidManifest(config, (c) => {
+    const androidPackage = c.android?.package || config.android?.package || 'com.privoralabs.privategather.messenger';
     c.modResults.manifest.$ = c.modResults.manifest.$ || {};
     c.modResults.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
     c.modResults.manifest['uses-permission'] = c.modResults.manifest['uses-permission'] || [];
@@ -372,7 +392,7 @@ module.exports = function withPrivateGatherNativeCalling(config) {
       app.service.push({$: {'android:name':'expo.modules.notifications.service.ExpoFirebaseMessagingService','tools:node':'remove'}});
     }
     ensureService(app, { $: {
-      'android:name': 'com.privoralabs.privategather.PrivateGatherFirebaseMessagingService',
+      'android:name': `${androidPackage}.PrivateGatherFirebaseMessagingService`,
       'android:exported': 'false',
     }, 'intent-filter': [{ $: {'android:priority':'100'}, action: [{ $: { 'android:name': 'com.google.firebase.MESSAGING_EVENT' } }] }] });
     ensureService(app, { $: {
@@ -390,9 +410,9 @@ module.exports = function withPrivateGatherNativeCalling(config) {
     main.$['android:showWhenLocked'] = 'true';
     main.$['android:turnScreenOn'] = 'true';
     app.activity = app.activity || [];
-    if (!app.activity.some(v => v.$?.['android:name'] === 'com.privoralabs.privategather.PrivateGatherIncomingCallActivity')) {
+    if (!app.activity.some(v => v.$?.['android:name'] === `${androidPackage}.PrivateGatherIncomingCallActivity`)) {
       app.activity.push({$: {
-        'android:name':'com.privoralabs.privategather.PrivateGatherIncomingCallActivity',
+        'android:name':`${androidPackage}.PrivateGatherIncomingCallActivity`,
         'android:exported':'false','android:excludeFromRecents':'true','android:launchMode':'singleTop',
         'android:showWhenLocked':'true','android:turnScreenOn':'true','android:screenOrientation':'portrait'
       }});
@@ -401,11 +421,13 @@ module.exports = function withPrivateGatherNativeCalling(config) {
   });
 
   config = withDangerousMod(config, ['android', async (c) => {
-    const dir = path.join(c.modRequest.platformProjectRoot,'app','src','main','java','com','privoralabs','privategather');
+    const androidPackage = c.android?.package || config.android?.package || 'com.privoralabs.privategather.messenger';
+    const dir = path.join(c.modRequest.platformProjectRoot,'app','src','main','java',...androidPackage.split('.'));
+    const withPackage=(source)=>source.replace('package com.privoralabs.privategather',`package ${androidPackage}`);
     fs.mkdirSync(dir,{recursive:true});
-    fs.writeFileSync(path.join(dir,'PrivateGatherFirebaseMessagingService.kt'),androidService);
-    fs.writeFileSync(path.join(dir,'PrivateGatherIncomingCallActivity.kt'),androidIncomingActivity);
-    fs.writeFileSync(path.join(dir,'PrivateGatherCallAccessModule.kt'),androidCallAccessModule);
+    fs.writeFileSync(path.join(dir,'PrivateGatherFirebaseMessagingService.kt'),withPackage(androidService));
+    fs.writeFileSync(path.join(dir,'PrivateGatherIncomingCallActivity.kt'),withPackage(androidIncomingActivity));
+    fs.writeFileSync(path.join(dir,'PrivateGatherCallAccessModule.kt'),withPackage(androidCallAccessModule));
     return c;
   }]);
 

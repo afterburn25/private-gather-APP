@@ -4,6 +4,7 @@ import {callUuid,callIdFromUuid} from './callIdentity';
 import {mediaDevices,RTCPeerConnection,RTCSessionDescription,RTCIceCandidate,MediaStream} from 'react-native-webrtc';
 import {get,post} from '../api/client';
 import {ReverbClient} from '../realtime/ReverbClient';
+import {APP_FLAVOR} from '../config';
 
 type Streams={local?:MediaStream,remote?:MediaStream,detail?:any,status?:string,remoteRevision?:number};
 type IncomingHandler=(payload:any)=>void;
@@ -16,7 +17,8 @@ export class CallManager{
     this.systemAnswer=onAnswer;this.systemEnd=onEnd;
     if(!this.configured){
       try{
-        await CallKeep.setup({ios:{appName:'Private Gather',supportsVideo:true,maximumCallsPerCallGroup:1,maximumCallGroups:1,displayCallReachabilityTimeout:15000},android:{alertTitle:'Enable Private Gather calling',alertDescription:'Allow Private Gather to show and manage private voice/video calls.',cancelButton:'Not now',okButton:'Enable',additionalPermissions:[],foregroundService:{channelId:'private-gather-calls',channelName:'Private Gather calls',notificationTitle:'Private Gather call',notificationIcon:'mipmap/ic_launcher'}}});
+        const callAppName=APP_FLAVOR==='messenger'?'Private Gather Messenger':'Private Gather';
+        await CallKeep.setup({ios:{appName:callAppName,supportsVideo:true,maximumCallsPerCallGroup:1,maximumCallGroups:1,displayCallReachabilityTimeout:15000},android:{alertTitle:'Enable Private Gather calling',alertDescription:'Allow Private Gather to show and manage private voice/video calls.',cancelButton:'Not now',okButton:'Enable',additionalPermissions:[],foregroundService:{channelId:'private-gather-calls',channelName:'Private Gather calls',notificationTitle:'Private Gather call',notificationIcon:'mipmap/ic_launcher'}}});
         CallKeep.addEventListener('answerCall',({callUUID}:any)=>{const id=callIdFromUuid(String(callUUID));if(id&&id===this.callId){if(Platform.OS==='android')Promise.resolve(CallKeep.backToForeground()).catch(()=>{});this.systemAnswer?.(id);}});
         CallKeep.addEventListener('endCall',({callUUID}:any)=>{const id=callIdFromUuid(String(callUUID));if(id&&id===this.callId)this.systemEnd?.(id);});
         this.callKeepReady=true;
@@ -247,11 +249,25 @@ export class CallManager{
     const detail=(await get(`/calls/${callId}`)).data;
     this.isCaller=!!detail.caller;this.remoteUserId=Number(detail?.peer?.id||0);this.mode=detail.mode==='video'?'video':'voice';
 
-    // Samsung and several Android camera stacks do not reliably allow a second
-    // getUserMedia request while the preview stream still owns the camera.
-    this.clearIncomingPreview();
+    // Messenger V2 promotes the already-running incoming preview into the live call.
+    // Only a microphone track is acquired, avoiding camera teardown/reopen blink.
+    let promotedPreview:MediaStream|undefined;
+    if(!preparedLocal&&this.mode==='video'&&this.preview&&this.previewCallId===callId){
+      promotedPreview=this.preview;this.preview=undefined;this.previewCallId=0;
+      try{
+        const mic=await this.captureLocal('voice',true);
+        for(const track of mic.getAudioTracks?.()||[])promotedPreview.addTrack(track);
+      }catch(e){
+        try{promotedPreview.getTracks().forEach(t=>t.stop())}catch{}
+        throw e;
+      }
+    }else{
+      this.clearIncomingPreview();
+    }
     if(preparedLocal){
       this.local=preparedLocal;
+    }else if(promotedPreview){
+      this.local=promotedPreview;
     }else{
       this.local=await this.captureLocal(this.mode,true);
     }

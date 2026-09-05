@@ -21,7 +21,8 @@ import LaunchScreen from './src/screens/LaunchScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import VerificationScreen from './src/screens/VerificationScreen';
 import DiscoverScreen from './src/screens/DiscoverScreen';
-import MessagesScreen from './src/screens/MessagesScreen';
+import MessengerBridgeScreen from './src/messenger/MessengerBridgeScreen';
+import {openMessenger} from './src/messenger/MessengerBridge';
 import EventsScreen from './src/screens/EventsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
@@ -237,22 +238,13 @@ function PrivateGatherApp(){
 
   async function signIn(email:string,password:string){const r=await login(email,password);await setToken(r.token);setMe(r.user);setAuthed(true)}
   const setUnread=useCallback((n:number)=>setMessageUnread(n),[]);
-  async function startMessage(member:Member){try{const r=await post(`/conversations/with/${member.id}`,{});if(navRef.isReady())navRef.navigate('Conversation',{id:Number(r.conversation_id)});}catch(e:any){setFatal(String(e.message||e))}}
+  async function startMessage(member:Member){await openMessenger({userId:Number(member.id)});}
   async function startCall(peer:any,mode:'voice'|'video'){
-    const username=String(peer?.username||'').replace(/^@/,'');
-    const isConversation=Number(peer?.member_id||0)>0;
-    const target={
-      userId:Number(peer?.member_id||peer?.user_id||(!isConversation?peer?.id:0)||0)||undefined,
-      username:username||undefined,
-      conversationId:Number(peer?.conversation_id||(isConversation?peer?.id:0)||0)||undefined,
-    };
-    if(!target.userId&&!target.username&&!target.conversationId){setFatal('Unable to identify the member for this call.');return;}
-    try{
-      setFatal('');
-      setCall({id:0,mode,peer:String(peer.display_name||peer.name||'Private Gather member'),status:'starting call',photoUrl:peer.avatar_url,incoming:false});
-      const started=await callManager.start(target,mode,String(peer.display_name||peer.name||'Private Gather member'),rtConfigRef.current,streamState,callEnded);
-      setCall(prev=>prev?{...prev,id:Number(started.call_id),mode,peer:String(peer.display_name||peer.name||prev.peer),status:'ringing',incoming:false}:prev);
-    }catch(e:any){setFatal(String(e?.message||e));setCall(null)}
+    await openMessenger({
+      userId:Number(peer?.member_id||peer?.user_id||peer?.id||0)||undefined,
+      conversationId:Number(peer?.conversation_id||0)||undefined,
+      callMode:mode,
+    });
   }
 
   async function answerIncomingId(callId:number){
@@ -280,12 +272,12 @@ function PrivateGatherApp(){
   const mainTabs=()=> <Tabs.Navigator screenOptions={({route})=>({headerShown:false,tabBarHideOnKeyboard:true,tabBarActiveTintColor:C.pink,tabBarInactiveTintColor:C.faint,tabBarStyle:{height:58+Math.max(insets.bottom,10),paddingTop:6,paddingBottom:Math.max(insets.bottom,10),backgroundColor:'#050914',borderTopColor:'#203149',borderTopWidth:1},tabBarLabelStyle:{fontSize:10,fontWeight:'800'},tabBarIcon:({color,size})=>{const map:any={Home:['house.fill','home'],Discover:['safari.fill','explore'],Messages:['message.fill','chat_bubble'],Events:['calendar','event'],Me:['person.fill','person']};const pair=map[route.name]||['circle','circle'];return <NativeIcon ios={pair[0]} android={pair[1]} size={Math.min(size,24)} color={color}/>;},tabBarBadge:route.name==='Messages'&&messageUnread>0?(messageUnread>99?'99+':messageUnread):undefined,tabBarBadgeStyle:{backgroundColor:C.pink,color:'#fff',fontSize:9,fontWeight:'900'}})}>
     <Tabs.Screen name="Home">{()=> <HomeScreen me={me} notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onMember={id=>go('Member',{id})} onEvent={id=>go('Event',{id})} onDiscover={()=>go('MainTabs',{screen:'Discover'})} onEvents={()=>go('MainTabs',{screen:'Events'})} onMessages={()=>go('MainTabs',{screen:'Messages'})} onVerify={()=>go('Verification')}/>}</Tabs.Screen>
     <Tabs.Screen name="Discover">{()=> <DiscoverScreen notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onMember={id=>go('Member',{id})}/>}</Tabs.Screen>
-    <Tabs.Screen name="Messages">{()=> <MessagesScreen notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onConversation={id=>go('Conversation',{id})} pulse={messagePulse} onUnread={setUnread}/>}</Tabs.Screen>
+    <Tabs.Screen name="Messages">{()=> <MessengerBridgeScreen/>}</Tabs.Screen>
     <Tabs.Screen name="Events">{()=> <EventsScreen notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onEvent={id=>go('Event',{id})}/>}</Tabs.Screen>
     <Tabs.Screen name="Me">{()=> <ProfileScreen me={me} notificationCount={notificationCount} onNotifications={()=>go('Notifications')} onClubs={()=>go('Clubs')} onLogout={()=>{setAuthed(false)}} onMember={id=>go('Member',{id})}/>}</Tabs.Screen>
   </Tabs.Navigator>;
 
-  return <SafeAreaView style={s.shell} edges={['top','left','right']}><StatusBar barStyle="light-content" backgroundColor={C.bg}/>{fatal?<View style={s.alert}><Text numberOfLines={2} style={s.alertText}>{fatal}</Text></View>:null}<NavigationContainer ref={navRef} theme={navTheme}><Stack.Navigator screenOptions={{headerShown:false,animation:'slide_from_right',contentStyle:{backgroundColor:C.bg}}}><Stack.Screen name="MainTabs">{()=>mainTabs()}</Stack.Screen><Stack.Screen name="Verification">{()=> <VerificationScreen onBack={()=>navRef.goBack()}/>}</Stack.Screen><Stack.Screen name="Notifications">{()=> <NotificationsScreen onBack={()=>navRef.goBack()} onTarget={handleNotificationTarget} onCount={setNotificationCount}/>}</Stack.Screen><Stack.Screen name="Clubs">{()=> <ClubsScreen onBack={()=>navRef.goBack()} onClub={slug=>go('Club',{slug})}/>}</Stack.Screen><Stack.Screen name="Member">{({route}:any)=> <MemberProfileScreen memberId={Number(route.params.id)} onBack={()=>navRef.goBack()} onMessage={startMessage} onCall={startCall}/>}</Stack.Screen><Stack.Screen name="Event">{({route}:any)=> <EventDetailScreen eventId={Number(route.params.id)} onBack={()=>navRef.goBack()} onClub={slug=>go('Club',{slug})}/>}</Stack.Screen><Stack.Screen name="Club">{({route}:any)=> <ClubDetailScreen slug={String(route.params.slug)} onBack={()=>navRef.goBack()} onEvent={id=>go('Event',{id})}/>}</Stack.Screen><Stack.Screen name="Conversation">{({route}:any)=> <ConversationScreen conversationId={Number(route.params.id)} rt={rt} userChannel={rtConfig?.user_channel} onBack={()=>{navRef.goBack();setMessagePulse(v=>v+1);refreshCounts()}} onCall={startCall}/>}</Stack.Screen></Stack.Navigator></NavigationContainer></SafeAreaView>;
+  return <SafeAreaView style={s.shell} edges={['top','left','right']}><StatusBar barStyle="light-content" backgroundColor={C.bg}/>{fatal?<View style={s.alert}><Text numberOfLines={2} style={s.alertText}>{fatal}</Text></View>:null}<NavigationContainer ref={navRef} theme={navTheme}><Stack.Navigator screenOptions={{headerShown:false,animation:'slide_from_right',contentStyle:{backgroundColor:C.bg}}}><Stack.Screen name="MainTabs">{()=>mainTabs()}</Stack.Screen><Stack.Screen name="Verification">{()=> <VerificationScreen onBack={()=>navRef.goBack()}/>}</Stack.Screen><Stack.Screen name="Notifications">{()=> <NotificationsScreen onBack={()=>navRef.goBack()} onTarget={handleNotificationTarget} onCount={setNotificationCount}/>}</Stack.Screen><Stack.Screen name="Clubs">{()=> <ClubsScreen onBack={()=>navRef.goBack()} onClub={slug=>go('Club',{slug})}/>}</Stack.Screen><Stack.Screen name="Member">{({route}:any)=> <MemberProfileScreen memberId={Number(route.params.id)} onBack={()=>navRef.goBack()} onMessage={startMessage} onCall={startCall}/>}</Stack.Screen><Stack.Screen name="Event">{({route}:any)=> <EventDetailScreen eventId={Number(route.params.id)} onBack={()=>navRef.goBack()} onClub={slug=>go('Club',{slug})}/>}</Stack.Screen><Stack.Screen name="Club">{({route}:any)=> <ClubDetailScreen slug={String(route.params.slug)} onBack={()=>navRef.goBack()} onEvent={id=>go('Event',{id})}/>}</Stack.Screen></Stack.Navigator></NavigationContainer></SafeAreaView>;
 }
 
 const s=StyleSheet.create({loading:{flex:1,alignItems:'center',justifyContent:'center',backgroundColor:C.bg},shell:{flex:1,backgroundColor:C.bg},alert:{position:'absolute',left:14,right:14,top:8,zIndex:1000,paddingHorizontal:12,paddingVertical:8,borderRadius:12,backgroundColor:'#35171a',borderWidth:1,borderColor:'#72333a'},alertText:{color:'#ffb4ba',fontSize:10,fontWeight:'700'}});
