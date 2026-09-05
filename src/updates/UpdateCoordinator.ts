@@ -4,7 +4,7 @@ import * as Keychain from 'react-native-keychain';
 import {Linking,Platform} from 'react-native';
 import {post} from '../api/client';
 import {installationId} from '../device/installation';
-import {APP_VERSION,RUNTIME_VERSION} from '../config';
+import {APP_FLAVOR,APP_VERSION,RUNTIME_VERSION} from '../config';
 import {registerPush} from '../notifications/register';
 
 const PENDING_SERVICE='privategather.native.pending-update';
@@ -15,7 +15,7 @@ async function pending():Promise<PendingUpdate|null>{const row=await Keychain.ge
 async function rememberPending(value:PendingUpdate){await Keychain.setGenericPassword('pending',JSON.stringify(value),{service:PENDING_SERVICE});}
 async function clearPending(){await Keychain.resetGenericPassword({service:PENDING_SERVICE});}
 
-async function identity(){const push=await registerPush();return {installation_id:await installationId(),platform:Platform.OS,device_name:Device.deviceName||Device.modelName||'Private Gather mobile',app_version:APP_VERSION,runtime_version:RUNTIME_VERSION,push_provider:push?.provider,push_token:push?.token,capabilities:{realtime:true,webrtc:true,callkeep:true,voip_push:Platform.OS==='ios',background_calls:true,ota:true}};}
+async function identity(){const push=await registerPush();const label=APP_FLAVOR==='messenger'?'Private Gather Messenger':'Private Gather';return {installation_id:await installationId(),platform:Platform.OS,device_name:`${label} · ${Device.deviceName||Device.modelName||'mobile'}`,app_version:APP_VERSION,runtime_version:RUNTIME_VERSION,push_provider:push?.provider,push_token:push?.token,capabilities:{app_role:APP_FLAVOR,realtime:true,webrtc:APP_FLAVOR==='messenger',callkeep:APP_FLAVOR==='messenger',voip_push:APP_FLAVOR==='messenger'&&Platform.OS==='ios',background_calls:APP_FLAVOR==='messenger',ota:true}};}
 
 async function reportPendingApplied(request:any){const item=await pending();if(!item)return;if(item.type==='binary'&&compareVersions(APP_VERSION,item.version)<0)return;try{await post('/updates/report',{installation_id:request.installation_id,release_id:item.release_id,event:'applied',detail:item.type==='ota'?'OTA loaded after controlled restart.':'Native binary detected after store update.'});await clearPending();}catch{}}
 

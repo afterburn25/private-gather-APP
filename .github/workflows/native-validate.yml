@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'App.tsx'
+      - 'MessengerApp.tsx'
       - 'index.ts'
       - 'app.json'
       - 'app.config.js'
@@ -21,6 +22,7 @@ on:
     branches: [main]
     paths:
       - 'App.tsx'
+      - 'MessengerApp.tsx'
       - 'index.ts'
       - 'app.json'
       - 'app.config.js'
@@ -57,7 +59,13 @@ jobs:
   android:
     needs: public-safety
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [main, messenger]
+    env:
+      PG_APP_FLAVOR: ${{ matrix.flavor }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -75,18 +83,18 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Expo config
-        run: npx expo config --type public >/tmp/private-gather-expo-config.txt
+        run: npx expo config --type public > /tmp/private-gather-${{ matrix.flavor }}-expo-config.txt
       - name: Generate Android project
         run: npx expo prebuild --clean --platform android
       - name: Kotlin compile gate
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --console=plain
-      - name: Build debug APK in CI
+      - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --console=plain
       - uses: actions/upload-artifact@v4
         with:
-          name: private-gather-android-debug
+          name: private-gather-${{ matrix.flavor }}-android-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
@@ -94,7 +102,13 @@ jobs:
   ios-prebuild:
     needs: public-safety
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [main, messenger]
+    env:
+      PG_APP_FLAVOR: ${{ matrix.flavor }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -11,7 +11,13 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
 const appConfigFactory = require(path.join(root, 'app.config.js'));
-const resolvedConfig = appConfigFactory({ config: {} });
+const originalFlavor=process.env.PG_APP_FLAVOR;
+process.env.PG_APP_FLAVOR='main';
+const mainResolvedConfig=appConfigFactory({config:{}});
+process.env.PG_APP_FLAVOR='messenger';
+const messengerResolvedConfig=appConfigFactory({config:{}});
+if(originalFlavor===undefined)delete process.env.PG_APP_FLAVOR;else process.env.PG_APP_FLAVOR=originalFlavor;
+const resolvedConfig=(String(originalFlavor||'main').toLowerCase()==='messenger'?messengerResolvedConfig:mainResolvedConfig);
 const configSource = fs.readFileSync(path.join(root,'src','config.ts'),'utf8');
 const loginSource = fs.readFileSync(path.join(root,'src','screens','LoginScreen.tsx'),'utf8');
 const homeSource = fs.readFileSync(path.join(root,'src','screens','HomeScreen.tsx'),'utf8');
@@ -19,6 +25,13 @@ const callSource = fs.readFileSync(path.join(root,'src','calls','CallManager.ts'
 const callScreenSource = fs.readFileSync(path.join(root,'src','screens','CallScreen.tsx'),'utf8');
 const ringtoneSource = fs.readFileSync(path.join(root,'src','calls','CallRingtone.ts'),'utf8');
 const nativeCallPluginSource = fs.readFileSync(path.join(root,'plugins','withPrivateGatherNativeCalling.js'),'utf8');
+
+const messengerRootSource=fs.readFileSync(path.join(root,'MessengerApp.tsx'),'utf8');
+const messengerEngineSource=fs.readFileSync(path.join(root,'src','messenger','v2','MessengerEngine.ts'),'utf8');
+const messengerStoreSource=fs.readFileSync(path.join(root,'src','messenger','v2','MessengerStore.ts'),'utf8');
+const messengerRingerSource=fs.readFileSync(path.join(root,'src','messenger','v2','calls','MessengerRinger.ts'),'utf8');
+const messengerCallSource=fs.readFileSync(path.join(root,'src','messenger','v2','screens','MessengerCallScreen.tsx'),'utf8');
+
 let failures = 0;
 let warnings = 0;
 
@@ -36,7 +49,7 @@ nodeMajor === 22 && nodeMinor >= 13
   ? ok(`Node ${process.versions.node}`)
   : fail(`Node ${process.versions.node}; use Node 22.13+ for Expo SDK 57`);
 
-const expected='1.1.200';
+const expected='1.2.0';
 const runtimeVersions = {
   package: String(pkg.version || ''),
   lock: String(lock.version || lock.packages?.['']?.version || ''),
@@ -47,14 +60,14 @@ Object.values(runtimeVersions).every(v=>v===expected)
   ? ok(`native version consistency ${expected}`)
   : fail(`native version mismatch ${JSON.stringify(runtimeVersions)}`);
 
-configSource.includes("APP_VERSION=String(Constants.expoConfig?.version||'1.1.200')")
-  ? ok('source APP_VERSION fallback 1.1.200')
-  : fail('source APP_VERSION fallback is not 1.1.200');
-loginSource.includes('Private Gather · Native 1.1.200')
-  ? ok('visible login version 1.1.200')
-  : fail('visible login version is not 1.1.200');
+configSource.includes("APP_VERSION=String(Constants.expoConfig?.version||'1.2.0')")
+  ? ok('source APP_VERSION fallback 1.2.0')
+  : fail('source APP_VERSION fallback is not 1.2.0');
+loginSource.includes('Private Gather · Native 1.2.0')
+  ? ok('visible login version 1.2.0')
+  : fail('visible login version is not 1.2.0');
 
-for (const [name,range] of [['expo-font','~57.0.3'],['expo-asset','~57.0.16']]) {
+for (const [name,range] of [['expo-font','~57.0.3'],['expo-asset','~57.0.16'],['expo-sqlite','~57.0.2']]) {
   pkg.dependencies?.[name]===range
     ? ok(`${name} declared directly`)
     : fail(`${name} missing or unexpected in package.json`);
@@ -97,6 +110,20 @@ ringtoneSource.includes('player.loop=true') && !ringtoneSource.includes('didJust
 nativeCallPluginSource.includes('cancelIncomingCallNotification')
   ? ok('foreground app can cancel Android system call ringtone')
   : fail('Android call-notification cancellation bridge missing');
+
+
+mainResolvedConfig.android?.package === 'com.privoralabs.privategather' ? ok('main Android application id') : fail('main Android application id mismatch');
+mainResolvedConfig.ios?.bundleIdentifier === 'com.privoralabs.privategather' ? ok('main iOS bundle identifier') : fail('main iOS bundle identifier mismatch');
+mainResolvedConfig.scheme === 'privategather' ? ok('main deep-link scheme') : fail('main deep-link scheme mismatch');
+messengerResolvedConfig.android?.package === 'com.privoralabs.privategather.messenger' ? ok('Messenger Android application id') : fail('Messenger Android application id mismatch');
+messengerResolvedConfig.ios?.bundleIdentifier === 'com.privoralabs.privategather.messenger' ? ok('Messenger iOS bundle identifier') : fail('Messenger iOS bundle identifier mismatch');
+messengerResolvedConfig.scheme === 'privategathermessenger' ? ok('Messenger deep-link scheme') : fail('Messenger deep-link scheme mismatch');
+messengerStoreSource.includes('journal_mode = WAL') && messengerStoreSource.includes('CREATE TABLE IF NOT EXISTS outbox') ? ok('Messenger persistent WAL cache and outbox') : fail('Messenger persistent store/outbox missing');
+messengerEngineSource.includes('flushOutbox') && messengerEngineSource.includes('ReverbClient') && messengerEngineSource.includes('setTyping') ? ok('Messenger durable realtime engine') : fail('Messenger realtime/outbox engine missing');
+messengerRootSource.includes('MessengerEngine') && messengerRootSource.includes('privategathermessenger://') ? ok('dedicated Messenger native root') : fail('Messenger root/handoff missing');
+messengerRingerSource.includes('COMPLETE_CLIP_MS=8500') && messengerRingerSource.includes('player.loop=false') && !messengerRingerSource.includes('didJustFinish') ? ok('Messenger ringtone completes full clip before restart') : fail('Messenger ringtone cycle guard missing');
+messengerCallSource.includes('objectFit="cover"') && messengerCallSource.includes('useWindowDimensions') ? ok('Messenger full-window cover video') : fail('Messenger full-window video contract missing');
+nativeCallPluginSource.includes('private-gather-messenger-call-alert-v120') && nativeCallPluginSource.includes('setOnlyAlertOnce(true)') ? ok('Android incoming call dedupe') : fail('Android incoming call dedupe missing');
 
 const api = process.env.EXPO_PUBLIC_PG_API_BASE || 'https://member.privategather.com/api/v1/native';
 api.startsWith('https://') ? ok(`HTTPS API ${api}`) : fail('EXPO_PUBLIC_PG_API_BASE must use HTTPS');
