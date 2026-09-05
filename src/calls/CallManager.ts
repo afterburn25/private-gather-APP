@@ -247,11 +247,26 @@ export class CallManager{
     const detail=(await get(`/calls/${callId}`)).data;
     this.isCaller=!!detail.caller;this.remoteUserId=Number(detail?.peer?.id||0);this.mode=detail.mode==='video'?'video':'voice';
 
-    // Samsung and several Android camera stacks do not reliably allow a second
-    // getUserMedia request while the preview stream still owns the camera.
-    this.clearIncomingPreview();
+    // Rev7: transfer the already-running incoming video preview into the live
+    // call instead of stopping/reopening the camera. Add only a microphone track.
+    let promotedPreview:MediaStream|undefined;
+    if(!preparedLocal&&this.mode==='video'&&this.preview&&this.previewCallId===callId){
+      const preview=this.preview;this.preview=undefined;this.previewCallId=0;
+      promotedPreview=preview;
+      try{
+        const mic=await this.captureLocal('voice',true);
+        for(const track of mic.getAudioTracks?.()||[])preview.addTrack(track);
+      }catch(e){
+        try{preview.getTracks().forEach(t=>t.stop())}catch{}
+        throw e;
+      }
+    }else{
+      this.clearIncomingPreview();
+    }
     if(preparedLocal){
       this.local=preparedLocal;
+    }else if(promotedPreview){
+      this.local=promotedPreview;
     }else{
       this.local=await this.captureLocal(this.mode,true);
     }

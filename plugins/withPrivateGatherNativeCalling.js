@@ -65,7 +65,7 @@ import expo.modules.notifications.service.ExpoFirebaseMessagingService
 
 class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
   companion object {
-    private const val CHANNEL_ID = "pg-calls-v199"
+    private const val CHANNEL_ID = "pg-calls-v202"
   }
 
   override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -89,6 +89,13 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
   }
 
   private fun showIncomingCall(data: Map<String, String>) {
+    val callId = data["call_id"] ?: return
+    val now = System.currentTimeMillis()
+    val prefs = getSharedPreferences("private-gather-call-alert-v202", Context.MODE_PRIVATE)
+    val lastId = prefs.getString("last_call_id", "") ?: ""
+    val lastAt = prefs.getLong("last_call_at", 0L)
+    if (lastId == callId && now - lastAt < 120000L) return
+    prefs.edit().putString("last_call_id", callId).putLong("last_call_at", now).apply()
     val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     val sound = Uri.parse("android.resource://$packageName/raw/calling")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -105,7 +112,6 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
       manager.createNotificationChannel(channel)
     }
 
-    val callId = data["call_id"] ?: return
     val caller = data["caller_name"] ?: "Private Gather member"
     val mode = if (data["mode"] == "video") "video" else "voice"
     val uri = Uri.parse(
@@ -146,6 +152,7 @@ class PrivateGatherFirebaseMessagingService : ExpoFirebaseMessagingService() {
       .setFullScreenIntent(pending, true)
       .setOngoing(true)
       .setAutoCancel(false)
+      .setOnlyAlertOnce(true)
       .setSound(sound)
       .setVibrate(longArrayOf(0,700,300,700,300,1100))
       .setTimeoutAfter(120000L)
@@ -163,6 +170,8 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -184,6 +193,8 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
   private var camera:Camera?=null
   private lateinit var preview:TextureView
   private var videoCall=false
+  private var previewBufferWidth=0
+  private var previewBufferHeight=0
   private fun dp(value:Int):Int=(value*resources.displayMetrics.density).toInt()
   private fun rounded(color:Int):GradientDrawable=GradientDrawable().apply{shape=GradientDrawable.RECTANGLE;setColor(color);cornerRadius=dp(32).toFloat()}
 
@@ -224,6 +235,19 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
     for(i in 0 until Camera.getNumberOfCameras()){val info=Camera.CameraInfo();Camera.getCameraInfo(i,info);if(info.facing==Camera.CameraInfo.CAMERA_FACING_FRONT)return i}
     return -1
   }
+  private fun applyPreviewCenterCrop(){
+    val viewWidth=preview.width;val viewHeight=preview.height
+    if(viewWidth<=0||viewHeight<=0||previewBufferWidth<=0||previewBufferHeight<=0)return
+    val viewRect=RectF(0f,0f,viewWidth.toFloat(),viewHeight.toFloat())
+    val bufferRect=RectF(0f,0f,previewBufferWidth.toFloat(),previewBufferHeight.toFloat())
+    val centerX=viewRect.centerX();val centerY=viewRect.centerY()
+    bufferRect.offset(centerX-bufferRect.centerX(),centerY-bufferRect.centerY())
+    val matrix=Matrix()
+    matrix.setRectToRect(viewRect,bufferRect,Matrix.ScaleToFit.FILL)
+    val scale=kotlin.math.max(viewWidth.toFloat()/previewBufferWidth.toFloat(),viewHeight.toFloat()/previewBufferHeight.toFloat())
+    matrix.postScale(scale,scale,centerX,centerY)
+    preview.setTransform(matrix)
+  }
   private fun startCamera(){
     if(!videoCall||camera!=null||checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED||!preview.isAvailable)return
     try{
@@ -231,14 +255,22 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
       val info=Camera.CameraInfo();Camera.getCameraInfo(id,info)
       val opened=Camera.open(id)
       val params=opened.parameters
-      params.supportedPreviewSizes?.minByOrNull{abs((it.width*it.height)-(640*480))}?.let{params.setPreviewSize(it.width,it.height)}
+      val chosen=params.supportedPreviewSizes?.filter{it.width>=640&&it.height>=360}?.minByOrNull{
+        abs((it.width.toFloat()/it.height.toFloat())-(16f/9f))*100000f + abs((it.width*it.height)-(1280*720)).toFloat()/1000f
+      } ?: params.supportedPreviewSizes?.firstOrNull()
+      if(chosen!=null)params.setPreviewSize(chosen.width,chosen.height)
       if(params.isZoomSupported)params.zoom=0
       opened.parameters=params
       val rotation=windowManager.defaultDisplay.rotation
       val degrees=when(rotation){Surface.ROTATION_90->90;Surface.ROTATION_180->180;Surface.ROTATION_270->270;else->0}
       var result=(info.orientation+degrees)%360;result=(360-result)%360
       opened.setDisplayOrientation(result)
+      if(chosen!=null){
+        previewBufferWidth=if(result==90||result==270)chosen.height else chosen.width
+        previewBufferHeight=if(result==90||result==270)chosen.width else chosen.height
+      }
       opened.setPreviewTexture(preview.surfaceTexture);opened.startPreview();camera=opened
+      preview.post{applyPreviewCenterCrop()}
     }catch(_:Throwable){stopCamera()}
   }
   private fun stopCamera(){try{camera?.stopPreview()}catch(_:Throwable){};try{camera?.release()}catch(_:Throwable){};camera=null}
@@ -246,7 +278,7 @@ class PrivateGatherIncomingCallActivity : Activity(), TextureView.SurfaceTexture
   override fun onPause(){stopCamera();super.onPause()}
   override fun onDestroy(){stopCamera();super.onDestroy()}
   override fun onSurfaceTextureAvailable(surface:SurfaceTexture,width:Int,height:Int){startCamera()}
-  override fun onSurfaceTextureSizeChanged(surface:SurfaceTexture,width:Int,height:Int){}
+  override fun onSurfaceTextureSizeChanged(surface:SurfaceTexture,width:Int,height:Int){applyPreviewCenterCrop()}
   override fun onSurfaceTextureDestroyed(surface:SurfaceTexture):Boolean{stopCamera();return true}
   override fun onSurfaceTextureUpdated(surface:SurfaceTexture){}
 

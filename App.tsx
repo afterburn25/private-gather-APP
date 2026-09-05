@@ -91,7 +91,7 @@ function PrivateGatherApp(){
     const mode=(detail?.mode||normalized.mode)==='video'?'video':'voice';
     const peer=String(detail?.peer?.display_name||normalized.caller_name||'Private Gather member');
     const photoUrl=String(detail?.peer?.call_photo_url||detail?.peer?.avatar_url||normalized.caller_photo_url||normalized.caller_avatar||'')||undefined;
-    setCall(prev=>prev?.id&&prev.id!==id?prev:{id,mode,peer,status:'incoming',photoUrl,incoming:true});
+    setCall(prev=>prev?.id&&prev.id!==id?prev:{...prev,id,mode,peer,status:'incoming',photoUrl,incoming:true});
     if(foreground){await cancelNativeCallNotification(id);await startCallRingtone().catch(()=>false);}
     if(mode==='video'){
       try{

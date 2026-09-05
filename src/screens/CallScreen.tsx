@@ -1,5 +1,5 @@
 import React,{memo,useState} from 'react';
-import {Pressable,StatusBar,StyleSheet,Text,View} from 'react-native';
+import {Pressable,StatusBar,StyleSheet,Text,useWindowDimensions,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RTCView} from 'react-native-webrtc';
 import {C} from '../theme';
@@ -12,13 +12,14 @@ const StableRTCVideo=memo(function StableRTCVideo({streamURL,style,mirror=false,
 
 export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,onDecline}:{call:any;onEnd:()=>void;onMute:()=>boolean;onVideo:()=>boolean;onFlip:()=>boolean;onAnswer?:()=>void;onDecline?:()=>void}){
  const insets=useSafeAreaInsets();
+ const {width,height}=useWindowDimensions();
  const [muted,setMuted]=useState(false);const [videoOn,setVideoOn]=useState(call.mode==='video');
  const mute=()=>setMuted(onMute());const camera=()=>setVideoOn(onVideo());const incoming=!!call.incoming;
  const waitingVideo=call.mode==='video'&&!call.remoteUrl;
  const topOffset=Math.max(insets.top,18)+10;
  const dockOffset=Math.max(insets.bottom,14)+24;
 
- return <View style={s.page}><StatusBar hidden barStyle="light-content"/>
+ return <View style={[s.page,{width,height}]}><StatusBar hidden barStyle="light-content"/>
    {call.remoteUrl?<StableRTCVideo streamURL={call.remoteUrl} style={s.remoteVideo} zOrder={0}/>:
     call.photoUrl?<ProtectedImage uri={call.photoUrl} fallback={call.peer||'PG'} style={s.backgroundPhoto}/>:<View style={s.backgroundPhoto}/>}
    <View style={s.photoShade}/>
@@ -61,7 +62,7 @@ function ActionButton({label,ios,android,onPress,danger=false,success=false,larg
  </Pressable>
 }
 const s=StyleSheet.create({
- page:{...StyleSheet.absoluteFill,backgroundColor:'#02050a',overflow:'hidden'},
+ page:{flex:1,width:'100%',height:'100%',backgroundColor:'#02050a',overflow:'hidden'},
  remoteVideo:{...StyleSheet.absoluteFill,width:'100%',height:'100%',backgroundColor:'#02050a'},
  backgroundPhoto:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
  photoShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(2,5,10,.56)'},
