@@ -57,7 +57,6 @@ export default function CallScreen({call,onEnd,onMute,onVideo,onFlip,onAnswer,on
  </SafeAreaView>
 }
 
-
 function IncomingButton({label,ios,android,onPress,danger=false}:{label:string;ios:string;android:string;onPress:()=>void;danger?:boolean}){
  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[s.incomingButton,danger?s.incomingDecline:s.incomingAnswer]}><NativeIcon ios={ios} android={android} size={24} color="#fff"/><Text style={s.incomingButtonText}>{label}</Text></Pressable>
 }
@@ -70,10 +69,10 @@ function ActionButton({label,ios,android,onPress,danger=false,success=false,larg
 }
 const s=StyleSheet.create({
  page:{flex:1,backgroundColor:'#02050a'},
- remoteVideo:{...StyleSheet.absoluteFillObject,backgroundColor:'#02050a'},
- backgroundPhoto:{...StyleSheet.absoluteFillObject,backgroundColor:'#02050a'},
- photoShade:{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(2,5,10,.56)'},
- previewStage:{...StyleSheet.absoluteFillObject,overflow:'hidden',backgroundColor:'#010308',elevation:1},
+ remoteVideo:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
+ backgroundPhoto:{...StyleSheet.absoluteFill,backgroundColor:'#02050a'},
+ photoShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(2,5,10,.56)'},
+ previewStage:{...StyleSheet.absoluteFill,overflow:'hidden',backgroundColor:'#010308',elevation:1},
  waitingLocal:{width:'100%',height:'100%',backgroundColor:'#010308'},
  previewStarting:{flex:1,alignItems:'center',justifyContent:'center',gap:10},previewStartingText:{color:'#d7e1ee',fontSize:11,fontWeight:'800'},
  pipFrame:{position:'absolute',right:16,top:66,width:126,height:168,borderRadius:22,borderWidth:2,borderColor:C.cyan,backgroundColor:C.panel,overflow:'hidden',shadowColor:C.cyan,shadowOpacity:.32,shadowRadius:14,elevation:20},
