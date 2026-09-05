@@ -4,9 +4,10 @@ const path=require('path');
 
 module.exports=function withPrivateGatherCallLifecycleFix(config){
   return withDangerousMod(config,['android',async config=>{
+    const androidPackage=config.android?.package||'com.privoralabs.privategather';
     const javaDir=path.join(
       config.modRequest.projectRoot,
-      'android','app','src','main','java','com','privoralabs','privategather'
+      'android','app','src','main','java',...androidPackage.split('.')
     );
     const servicePath=path.join(javaDir,'PrivateGatherFirebaseMessagingService.kt');
     const activityPath=path.join(javaDir,'PrivateGatherIncomingCallActivity.kt');
