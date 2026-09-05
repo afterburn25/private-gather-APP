@@ -21,8 +21,8 @@ export default function MessengerCallScreen({call,onAnswer,onDecline,onEnd,onMut
 
  return <View style={s.page}>
    <StatusBar hidden translucent backgroundColor="transparent"/>
-   {hasVideo&&call.localUrl?<Video url={call.localUrl} style={s.fullVideo} mirror zOrder={0}/>:null}
-   {hasVideo&&call.remoteUrl?<Video url={call.remoteUrl} style={s.fullVideo} zOrder={1}/>:null}
+   {hasVideo&&!hasRemote&&call.localUrl?<Video url={call.localUrl} style={s.fullVideo} mirror zOrder={0}/>:null}
+   {hasVideo&&call.remoteUrl?<Video url={call.remoteUrl} style={s.fullVideo} zOrder={0}/>:null}
    {!hasVideo?<View style={s.voiceBackdrop}/>:null}
    <View pointerEvents="none" style={[s.top,{paddingTop:Math.max(insets.top,8)+8}]}>
      <Text style={s.brand}>PRIVATE GATHER MESSENGER</Text>

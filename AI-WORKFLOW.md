@@ -286,3 +286,12 @@ After a material development session:
 3. Update `RELEASE-STATE.json` when the authoritative validated source changes.
 4. Update `PRIVATE-GATHER-MASTER-HANDOFF.md` with what changed, exact versions/commits, validation evidence, status, remaining device tests, and next work.
 5. Do **not** promote to confirmed live without explicit user acceptance.
+
+
+## Optimized native release workflow (1.2.1+)
+1. Batch related device feedback into one scoped candidate.
+2. Develop on a dedicated branch and validate with the main/messenger Android + iOS matrix PR gate.
+3. Merge only the exact green PR head.
+4. Let the exact-main Native Validate run automatically build both APKs and the complete source+APK build kit.
+5. User performs physical testing from the exact-main kit.
+6. Promote only after explicit acceptance; otherwise supersede/quarantine the failed candidate and batch the next repair.

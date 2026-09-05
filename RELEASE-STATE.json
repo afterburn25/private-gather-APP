@@ -1,89 +1,72 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "Private Gather",
   "updated_at": "2026-09-05",
   "authority": {
     "native_repository": "afterburn25/private-gather-APP",
     "native_branch": "main",
-    "native_repository_visibility": "public",
-    "laravel_authority": "separate; retrieve current authoritative Laravel core/repository/VERSION before backend changes",
-    "workflow_file": "AI-WORKFLOW.md",
-    "master_handoff_file": "PRIVATE-GATHER-MASTER-HANDOFF.md"
+    "workflow_path": ".github/workflows/native-validate.yml"
+  },
+  "architecture": {
+    "native_apps": [
+      "Private Gather",
+      "Private Gather Messenger"
+    ],
+    "pwa_parity_required": false,
+    "messenger_package": "com.privoralabs.privategather.messenger",
+    "main_package": "com.privoralabs.privategather"
   },
   "native": {
-    "package_version": "1.1.199",
-    "status": "github_validated_candidate",
-    "validated_source_commit": "e95a2815c8410a7261b11ee7f32c7813b42aab82",
-    "validated_source_commit_title": "Establish GitHub native validation gate",
-    "validated_source_note": "Documentation-only commits after this source commit do not supersede the validated source baseline unless app/build source changes and a fresh Native Validate run passes.",
-    "confirmed_live_version": null,
+    "latest_prepared_version": "1.2.1",
+    "candidate_branch": "hotfix/1.2.1-call-fullscreen-stability-home-return",
+    "status": "prepared_candidate",
     "device_tested": false,
-    "promotion_requires_explicit_user_acceptance": true
+    "promotion_requires_explicit_user_acceptance": true,
+    "confirmed_live_version": null
   },
-  "github_validation": {
-    "workflow_name": "Native Validate",
-    "workflow_path": ".github/workflows/native-validate.yml",
-    "run_id": 33973554381,
-    "run_number": 12,
-    "head_branch": "main",
-    "head_sha": "e95a2815c8410a7261b11ee7f32c7813b42aab82",
-    "status": "completed",
-    "conclusion": "success",
-    "jobs": {
-      "public-safety": "success",
-      "android": "success",
-      "ios-prebuild": "success"
-    },
-    "android_artifact": {
-      "name": "private-gather-android-debug",
-      "artifact_id": 9971835782,
-      "archive_sha256": "3ef5e8fe40a24944b4af6951d0bcf918b40b53adba81a0617a685f30ac7a00e3",
-      "expires_at": "2026-09-12T15:16:04Z"
-    },
-    "required_android_steps": [
-      "npm ci --no-audit --no-fund",
-      "npm run check:ready",
-      "npm run typecheck",
-      "npx expo config --type public",
-      "npx expo prebuild --clean --platform android",
-      "./gradlew :app:compileDebugKotlin --console=plain",
-      "./gradlew assembleDebug --console=plain",
-      "upload private-gather-android-debug artifact"
+  "previous_candidate": {
+    "version": "1.2.0",
+    "validated_source_commit": "9a45c6cff0b28191195926496198b85105011853",
+    "validation_run_id": 33992709092,
+    "validation_run_number": 33,
+    "github_validation": "success",
+    "physical_device_result": "failed_acceptance",
+    "reported_failures": [
+      "transparent call letterbox/system-bar regions",
+      "rapid video flicker after answer",
+      "incoming call reduced to heads-up strip",
+      "main app remained on Messages bridge after Messenger handoff"
     ],
-    "required_ios_steps": [
-      "npm ci --no-audit --no-fund",
-      "npm run check:ready",
-      "npm run typecheck",
-      "npx expo prebuild --clean --platform ios",
-      "pod install",
-      "xcodebuild -list on generated workspace"
-    ]
+    "status": "superseded_by_1.2.1"
+  },
+  "pipeline": {
+    "matrix_android": [
+      "main",
+      "messenger"
+    ],
+    "matrix_ios_prebuild": [
+      "main",
+      "messenger"
+    ],
+    "automatic_exact_main_build_kit": true,
+    "github_green_is_not_device_acceptance": true
+  },
+  "backend": {
+    "native_messenger_foundation_version": "1.2.0",
+    "status": "prepared_candidate_or_install_state_unconfirmed",
+    "database_migration": false
   },
   "toolchain": {
     "node_ci": "22.23.2",
-    "android_java": "17",
+    "java": "17",
     "expo": "~57.0.17",
     "react_native": "0.86.3",
     "react": "19.2.3",
     "typescript": "~6.0.3"
   },
   "promotion_policy": {
-    "allowed_status_order": [
-      "prepared_candidate",
-      "github_validated_candidate",
-      "device_tested_candidate",
-      "confirmed_live_baseline"
-    ],
-    "failed_status": "quarantined",
     "github_green_is_not_device_acceptance": true,
-    "old_green_run_cannot_validate_new_commit": true
-  },
-  "next_gate_priorities": [
-    "Android physical-device smoke test from GitHub-produced artifact",
-    "Verify distributed build launches without Metro/local computer",
-    "Verify production HTTPS/WSS endpoints and no localhost/LAN dependency",
-    "Exercise login/navigation/messaging/realtime",
-    "Exercise camera/microphone/WebRTC call path",
-    "Add emulator/Maestro/API-contract regression tests after baseline device behavior is stable"
-  ]
+    "device_test_required": true,
+    "explicit_user_acceptance_required": true
+  }
 }
