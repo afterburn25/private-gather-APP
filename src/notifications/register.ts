@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import {Platform} from 'react-native';
+import {APP_FLAVOR} from '../config';
 
 export const PRIVATE_GATHER_CALL_CHANNEL='pg-calls-v200';
 export const PRIVATE_GATHER_CALL_CATEGORY='pgincomingcall';
@@ -32,7 +33,7 @@ export async function ensurePrivateGatherCallNotifications(){
 export async function ensureNotificationPermissions(){
   if(!Device.isDevice)return false;
   try{
-    await ensurePrivateGatherCallNotifications();
+    if(APP_FLAVOR==='messenger')await ensurePrivateGatherCallNotifications();
     const current=await Notifications.getPermissionsAsync();
     let status=current.status;
     if(status!=='granted')status=(await Notifications.requestPermissionsAsync()).status;
