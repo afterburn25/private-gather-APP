@@ -1,11 +1,18 @@
 const {withDangerousMod}=require('@expo/config-plugins');
 const fs=require('fs');
 const path=require('path');
+const withPrivateGatherNativeCalling=require('./withPrivateGatherNativeCalling');
 
 function addImport(text,anchor,line){if(text.includes(line))return text;if(!text.includes(anchor))throw new Error('Private Gather 1.2.1 missing import anchor: '+anchor);return text.replace(anchor,anchor+'\n'+line)}
+
 module.exports=function withPrivateGatherMessenger121(config){
-  const pkg=String(config.android?.package||'');if(!pkg.endsWith('.messenger'))return config;
-  return withDangerousMod(config,['android',async c=>{
+  const pkg=String(config.android?.package||'');
+  if(!pkg.endsWith('.messenger'))return config;
+
+  // Register the 1.2.1 patch first, then register the base native-call generator.
+  // Expo dangerous mods execute inside-out, so the base generator writes the Kotlin
+  // files first and this patch deterministically enhances those exact files afterward.
+  config=withDangerousMod(config,['android',async c=>{
     const dir=path.join(c.modRequest.platformProjectRoot,'app','src','main','java',...pkg.split('.'));
     const accessPath=path.join(dir,'PrivateGatherCallAccessModule.kt');
     const activityPath=path.join(dir,'PrivateGatherIncomingCallActivity.kt');
@@ -20,7 +27,8 @@ module.exports=function withPrivateGatherMessenger121(config){
     if(!access.includes('PG_MESSENGER_121_IMMERSIVE')){
       const marker='  @ReactMethod fun cancelIncomingCallNotification';
       const methods=`  // PG_MESSENGER_121_IMMERSIVE\n  @ReactMethod fun enterImmersiveCallMode(promise: Promise){\n    val activity=reactContext.currentActivity;if(activity==null){promise.resolve(false);return}\n    activity.runOnUiThread{try{\n      if(Build.VERSION.SDK_INT>=30){activity.window.setDecorFitsSystemWindows(false);activity.window.insetsController?.let{it.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars());it.systemBarsBehavior=WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE}}\n      else{@Suppress(\"DEPRECATION\") activity.window.decorView.systemUiVisibility=(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)}\n      activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);promise.resolve(true)\n    }catch(e:Throwable){promise.reject(\"PG_CALL_IMMERSIVE\",e)}}\n  }\n  @ReactMethod fun exitImmersiveCallMode(promise: Promise){\n    val activity=reactContext.currentActivity;if(activity==null){promise.resolve(false);return}\n    activity.runOnUiThread{try{\n      if(Build.VERSION.SDK_INT>=30)activity.window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())\n      else{@Suppress(\"DEPRECATION\") activity.window.decorView.systemUiVisibility=(View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)}\n      activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);promise.resolve(true)\n    }catch(e:Throwable){promise.reject(\"PG_CALL_IMMERSIVE_EXIT\",e)}}\n  }\n  @ReactMethod fun presentIncomingCall(callId: Double, mode: String, callerName: String, promise: Promise){\n    try{\n      val id=callId.toInt();val uri=Uri.parse(\"privategathermessenger://incoming-call?call_id=\"+Uri.encode(id.toString())+\"&mode=\"+Uri.encode(if(mode==\"video\")\"video\" else \"voice\")+\"&caller_name=\"+Uri.encode(callerName));\n      val clazz=Class.forName(reactContext.packageName+\".PrivateGatherIncomingCallActivity\");val intent=Intent(Intent.ACTION_VIEW,uri).setClass(reactContext,clazz);intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP);reactContext.startActivity(intent);promise.resolve(true)\n    }catch(e:Throwable){promise.reject(\"PG_PRESENT_INCOMING_CALL\",e)}\n  }\n`;
-      if(!access.includes(marker))throw new Error('Private Gather 1.2.1 missing call access insertion point');access=access.replace(marker,methods+marker);
+      if(!access.includes(marker))throw new Error('Private Gather 1.2.1 missing call access insertion point');
+      access=access.replace(marker,methods+marker);
     }
     fs.writeFileSync(accessPath,access);
 
@@ -35,7 +43,7 @@ module.exports=function withPrivateGatherMessenger121(config){
       activity=activity.replace('    window.navigationBarColor=Color.BLACK','    window.navigationBarColor=Color.BLACK\n    enterImmersive();cancelCallNotification();startRinging()');
       activity=activity.replace('  override fun onResume(){super.onResume();if(::preview.isInitialized&&preview.isAvailable)startCamera()}','  override fun onResume(){super.onResume();enterImmersive();startRinging();if(::preview.isInitialized&&preview.isAvailable)startCamera()}\n  override fun onWindowFocusChanged(hasFocus:Boolean){super.onWindowFocusChanged(hasFocus);if(hasFocus)enterImmersive()}');
       activity=activity.replace('  override fun onDestroy(){stopCamera();super.onDestroy()}','  override fun onDestroy(){stopCamera();stopRinging();super.onDestroy()}');
-      activity=activity.replace('  private fun openApp(action:String){\n    stopCamera()','  private fun openApp(action:String){\n    stopCamera();stopRinging()');
+      activity=activity.replace('  private fun openApp(action:String){\n    stopCamera()','  private fun openApp(action:String){\n    stopCamera();stopRinging();cancelCallNotification()');
     }
     fs.writeFileSync(activityPath,activity);
 
@@ -46,9 +54,12 @@ module.exports=function withPrivateGatherMessenger121(config){
     if(!service.includes('PG_MESSENGER_121_DIRECT_ACTIVITY')){
       const notify='    manager.notify(41000 + (requestCode and 0x0fff), notification)';
       const direct=`${notify}\n    // PG_MESSENGER_121_DIRECT_ACTIVITY: when Android allows it, promote the call immediately instead of leaving only a heads-up strip.\n    try{val power=getSystemService(Context.POWER_SERVICE) as PowerManager;val keyguard=getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager;if(power.isInteractive&&!keyguard.isKeyguardLocked)startActivity(Intent(launch).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))}catch(_:Throwable){}`;
-      if(!service.includes(notify))throw new Error('Private Gather 1.2.1 missing notification insertion point');service=service.replace(notify,direct);
+      if(!service.includes(notify))throw new Error('Private Gather 1.2.1 missing notification insertion point');
+      service=service.replace(notify,direct);
     }
     fs.writeFileSync(servicePath,service);
     return c;
   }]);
+
+  return withPrivateGatherNativeCalling(config);
 };
