@@ -1,0 +1,3 @@
+import React from 'react';import {Pressable,StyleSheet,Text,View} from 'react-native';import {C} from '../theme';
+export default function SectionTitle({title,action,onAction}:{title:string;action?:string;onAction?:()=>void}){return <View style={s.row}><Text style={s.title}>{title}</Text>{action&&onAction?<Pressable onPress={onAction}><Text style={s.action}>{action} →</Text></Pressable>:null}</View>};
+const s=StyleSheet.create({row:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:22,marginBottom:10},title:{color:C.text,fontSize:16,fontWeight:'900'},action:{color:C.cyan2,fontSize:11,fontWeight:'900'}});

@@ -1,0 +1,133 @@
+{
+  "expo": {
+    "name": "Private Gather",
+    "slug": "private-gather",
+    "version": "1.1.199",
+    "orientation": "portrait",
+    "scheme": "privategather",
+    "userInterfaceStyle": "dark",
+    "runtimeVersion": "pg-native-1",
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    },
+    "ios": {
+      "bundleIdentifier": "com.privoralabs.privategather",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Private Gather uses the camera for private video calls and media you choose to share.",
+        "NSMicrophoneUsageDescription": "Private Gather uses the microphone for private calls and voice messages.",
+        "UIBackgroundModes": [
+          "audio",
+          "voip",
+          "remote-notification"
+        ]
+      },
+      "associatedDomains": [
+        "applinks:member.privategather.com"
+      ],
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "package": "com.privoralabs.privategather",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "CALL_PHONE",
+        "READ_PHONE_STATE",
+        "READ_PHONE_NUMBERS",
+        "MANAGE_OWN_CALLS",
+        "USE_FULL_SCREEN_INTENT",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_PHONE_CALL",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "FOREGROUND_SERVICE_CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "member.privategather.com",
+              "pathPrefix": "/messenger"
+            },
+            {
+              "scheme": "https",
+              "host": "member.privategather.com",
+              "pathPrefix": "/calls"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "privategather"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#050914"
+      },
+      "icon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#100e12",
+          "image": "./assets/splash-transparent.png",
+          "imageWidth": 1,
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/splash-transparent.png",
+            "backgroundColor": "#100e12"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "pg-calls-v199",
+          "enableBackgroundRemoteNotifications": true,
+          "icon": "./assets/notification-icon.png",
+          "color": "#ff35d3",
+          "sounds": [
+            "./assets/audio/calling.wav"
+          ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          },
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
+        }
+      ],
+      "./plugins/withPrivateGatherNativeCalling"
+    ],
+    "icon": "./assets/icon.png"
+  }
+}
