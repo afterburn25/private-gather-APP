@@ -1,4 +1,4 @@
-﻿import React,{useCallback,useEffect,useState} from 'react';
+import React,{useCallback,useEffect,useState} from 'react';
 import {ActivityIndicator,FlatList,Modal,Platform,Pressable,RefreshControl,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import {get,post} from '../api/client';
 import {C} from '../theme';
@@ -16,7 +16,7 @@ type FeedPost={
 };
 type FeedComment={id:number;parent_comment_id?:number|null;body:string;created:string;mine?:boolean;speaker_name?:string;author:{id:number;display_name:string;username:string;avatar_url?:string}};
 
-export default function HomeScreen({me,notificationCount,onNotifications,onMember,onMessages}:{me:any;notificationCount:number;onNotifications:()=>void;onMember:(id:number)=>void;onEvent:(id:number)=>void;onDiscover:()=>void;onEvents:()=>void;onMessages:()=>void;onVerify:()=>void}){
+export default function HomeScreen({me,notificationCount,onNotifications,onMember,onMessages,onVerify}:{me:any;notificationCount:number;onNotifications:()=>void;onMember:(id:number)=>void;onEvent:(id:number)=>void;onDiscover:()=>void;onEvents:()=>void;onMessages:()=>void;onVerify:()=>void}){
  const [posts,setPosts]=useState<FeedPost[]>([]);
  const [catalog,setCatalog]=useState<ReactionMeta[]>([]);
  const [refreshing,setRefreshing]=useState(false);
@@ -56,7 +56,7 @@ export default function HomeScreen({me,notificationCount,onNotifications,onMembe
    <SpeakerPicker speakers={speakers} value={speakerId} onChange={setSpeakerId} label="Posting as"/>
    <View style={s.composer}>
      <ProtectedImage uri={me?.avatar_url} fallback={me?.display_name||'PG'} style={s.meAvatar}/>
-     <TextInput value={draft} onChangeText={setDraft} multiline maxLength={3000} placeholder="Share something with the communityâ€¦" placeholderTextColor={C.faint} style={s.input}/>
+     <TextInput value={draft} onChangeText={setDraft} multiline maxLength={3000} placeholder="Share something with the community…" placeholderTextColor={C.faint} style={s.input}/>
      <Pressable disabled={!draft.trim()||sending} onPress={submit} style={[s.postButton,(!draft.trim()||sending)&&{opacity:.4}]}><NativeIcon ios="arrow.up" android="arrow_upward" size={20} color="#fff"/></Pressable>
    </View>
    {error?<View style={s.feedError}><Text style={s.error}>Community could not refresh: {error}</Text><Pressable onPress={load} style={s.retryButton}><Text style={s.retryText}>Retry</Text></Pressable></View>:null}
@@ -71,7 +71,7 @@ export default function HomeScreen({me,notificationCount,onNotifications,onMembe
    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.pink}/>}
    ListHeaderComponent={header}
    ListEmptyComponent={<View style={s.empty}><NativeIcon ios="bubble.left.and.bubble.right.fill" android="forum" size={28} color={C.cyan2}/><Text style={s.emptyTitle}>The wall is quiet</Text><Text style={s.emptySub}>Be the first to start a conversation.</Text></View>}
-   renderItem={({item})=><PostCard post={item} catalog={catalog} speakers={speakers} speakerId={speakerId} onSpeakerChange={setSpeakerId} onMember={onMember} onPatch={patch=>patchPost(item.id,patch)}/>}
+   renderItem={({item})=><PostCard post={item} catalog={catalog} speakers={speakers} speakerId={speakerId} onSpeakerChange={setSpeakerId} onVerify={onVerify} onMember={onMember} onPatch={patch=>patchPost(item.id,patch)}/>} 
    initialNumToRender={4}
    maxToRenderPerBatch={4}
    updateCellsBatchingPeriod={70}
@@ -79,15 +79,9 @@ export default function HomeScreen({me,notificationCount,onNotifications,onMembe
  />;
 }
 
-// Avoid importing RefreshControl into the entire file's first line just to keep the main import compact.
-function RefreshControlCompat({refreshing,onRefresh}:{refreshing:boolean;onRefresh:()=>void}){
- const {RefreshControl}=require('react-native');
- return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.pink}/>;
-}
-
 function FeedPhotoView({photo,style,onVerify}:{photo:FeedPhoto;style:any;onVerify:()=>void}){
  return <View style={[style,s.mediaWrap]}>
-   <ProtectedImage uri={photo.url} fallback="18+" style={StyleSheet.absoluteFillObject as any}/>
+   <ProtectedImage uri={photo.url} fallback="18+" style={StyleSheet.absoluteFill as any}/>
    {photo.locked?<View style={s.verifyOverlay}>
      <NativeIcon ios="lock.shield.fill" android="verified_user" size={24} color={C.gold}/>
      <Text style={s.verifyTitle}>18+ verified content</Text>
@@ -161,32 +155,32 @@ function PostCard({post,catalog,speakers,speakerId,onSpeakerChange,onVerify,onMe
        <ProtectedImage uri={post.author.avatar_url} fallback={post.author.display_name} style={s.avatar}/>
      </Pressable>
      <Pressable style={{flex:1}} onPress={()=>onMember(Number(post.author.id))} accessibilityLabel={`Open ${post.author.display_name} profile`}>
-       <View style={s.nameRow}><Text numberOfLines={1} style={s.name}>{post.speaker_name||post.author.display_name}</Text>{post.author.verified?<NativeIcon ios="checkmark.seal.fill" android="verified" size={15} color={C.green}/>:null}</View><Text style={s.meta}>@{post.author.username} Â· {post.created}</Text>
+       <View style={s.nameRow}><Text numberOfLines={1} style={s.name}>{post.speaker_name||post.author.display_name}</Text>{post.author.verified?<NativeIcon ios="checkmark.seal.fill" android="verified" size={15} color={C.green}/>:null}</View><Text style={s.meta}>@{post.author.username} · {post.created}</Text>
      </Pressable>
      <NativeIcon ios="ellipsis" android="more_horiz" size={22} color={C.faint}/>
    </View>
 
    {post.body?<Text style={s.body}>{post.body}</Text>:null}
-   {photos.length===1?<FeedPhotoView photo={photos[0]} style={s.photo}/>:null}
-   {photos.length>1?<View style={s.photoGrid}>{photos.slice(0,4).map(p=><FeedPhotoView key={p.id} photo={p} style={s.gridPhoto}/>)}</View>:null}
+   {photos.length===1?<FeedPhotoView photo={photos[0]} style={s.photo} onVerify={onVerify}/>:null}
+   {photos.length>1?<View style={s.photoGrid}>{photos.slice(0,4).map(p=><FeedPhotoView key={p.id} photo={p} style={s.gridPhoto} onVerify={onVerify}/>)}</View>:null}
 
    {positive>0?<View style={s.reactedSummary}><Text style={s.reactedLabel}>Reacted</Text>{positiveSummary?<Text numberOfLines={2} style={s.reactedNames}>{positiveSummary}</Text>:null}</View>:null}
    <View style={s.actions}>
      {(!myReaction||myGroup==='positive')?<Pressable style={[s.reactionLauncher,myGroup==='positive'&&s.reactionActive]} onPress={()=>tapReaction('positive')} onLongPress={()=>openPalette('positive')} delayLongPress={430} accessibilityLabel={myGroup==='positive'?`${post.my_reaction_label||'Reaction'} reaction. Tap to change.`:'Like. Tap to react, hold for more.'}>
-       <Text style={s.launcherEmoji}>{myGroup==='positive'?(post.my_reaction_icon||'ðŸ‘'):'ðŸ‘'}</Text>{positive>0?<Text style={s.launcherCount}>{positive}</Text>:null}
+       <Text style={s.launcherEmoji}>{myGroup==='positive'?(post.my_reaction_icon||'👍'):'👍'}</Text>{positive>0?<Text style={s.launcherCount}>{positive}</Text>:null}
      </Pressable>:null}
      {(!myReaction||myGroup==='negative')?<Pressable style={[s.reactionLauncher,s.negativeLauncher,myGroup==='negative'&&s.reactionActive]} onPress={()=>tapReaction('negative')} onLongPress={()=>openPalette('negative')} delayLongPress={430} accessibilityLabel={myGroup==='negative'?`${post.my_reaction_label||'Reaction'} reaction. Tap to change.`:'Dislike. Tap to react, hold for more.'}>
-       <Text style={s.launcherEmoji}>{myGroup==='negative'?(post.my_reaction_icon||'ðŸ‘Ž'):'ðŸ‘Ž'}</Text>{negative>0?<Text style={[s.launcherCount,s.negativeCount]}>{negative}</Text>:null}
+       <Text style={s.launcherEmoji}>{myGroup==='negative'?(post.my_reaction_icon||'👎'):'👎'}</Text>{negative>0?<Text style={[s.launcherCount,s.negativeCount]}>{negative}</Text>:null}
      </Pressable>:null}
      <Pressable style={s.action} onPress={toggleComments} accessibilityLabel="Comments"><NativeIcon ios="bubble.left" android="chat_bubble_outline" size={19} color={C.muted}/><Text style={s.actionText}>{post.comment_count||0}</Text></Pressable>
      <View style={{flex:1}}/><NativeIcon ios="square.and.arrow.up" android="ios_share" size={19} color={C.muted}/>
    </View>
-   {negative>0?<Text style={s.dislikePrivacy}>{negative} dislike reaction{negative===1?'':'s'} Â· identities private</Text>:null}
+   {negative>0?<Text style={s.dislikePrivacy}>{negative} dislike reaction{negative===1?'':'s'} · identities private</Text>:null}
 
    <Pressable onPress={toggleComments} style={s.commentsLink}><Text style={s.commentsLinkText}>{commentLabel}</Text></Pressable>
 
    {expanded?<View style={s.commentsPanel}>
-     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id&&s.commentReply]}>
+     {commentsLoading?<ActivityIndicator color={C.pink} style={{marginVertical:12}}/>:comments.map(comment=><View key={comment.id} style={[s.commentRow,comment.parent_comment_id?s.commentReply:null]}>
        <Pressable onPress={()=>onMember(comment.author.id)}><ProtectedImage uri={comment.author.avatar_url} fallback={comment.author.display_name} style={s.commentAvatar}/></Pressable>
        <View style={s.commentBubble}>
          <View style={s.commentHead}><Text style={s.commentName}>{comment.speaker_name||comment.author.display_name}</Text><Text style={s.commentTime}>{comment.created}</Text></View>
@@ -196,7 +190,7 @@ function PostCard({post,catalog,speakers,speakerId,onSpeakerChange,onVerify,onMe
      {commentError?<Text style={s.commentError}>{commentError}</Text>:null}
      <SpeakerPicker speakers={speakers} value={speakerId} onChange={onSpeakerChange} label="Commenting as"/>
      <View style={s.commentComposer}>
-       <TextInput value={commentDraft} onChangeText={setCommentDraft} multiline maxLength={600} placeholder="Write a commentâ€¦" placeholderTextColor={C.faint} style={s.commentInput}/>
+       <TextInput value={commentDraft} onChangeText={setCommentDraft} multiline maxLength={600} placeholder="Write a comment…" placeholderTextColor={C.faint} style={s.commentInput}/>
        <Pressable onPress={sendComment} disabled={!commentDraft.trim()||commentSending} style={[s.commentButton,(!commentDraft.trim()||commentSending)&&{opacity:.4}]}><Text style={s.commentButtonText}>Comment</Text></Pressable>
      </View>
    </View>:null}
@@ -231,7 +225,7 @@ const s=StyleSheet.create({
  authorRow:{flexDirection:'row',alignItems:'center',gap:10,padding:12},avatar:{width:44,height:44,borderRadius:14},nameRow:{flexDirection:'row',alignItems:'center',gap:6},name:{color:C.text,fontSize:14,fontWeight:'900',maxWidth:'88%'},meta:{color:C.muted,fontSize:9,marginTop:3},
  body:{color:C.text,fontSize:14,lineHeight:20,paddingHorizontal:12,paddingBottom:12},
  photo:{width:'100%',height:340,backgroundColor:C.panel2},photoGrid:{flexDirection:'row',flexWrap:'wrap'},gridPhoto:{width:'50%',height:190,backgroundColor:C.panel2},
- mediaWrap:{overflow:'hidden'},verifyOverlay:{...StyleSheet.absoluteFillObject,alignItems:'center',justifyContent:'center',padding:18,backgroundColor:'rgba(4,7,13,.16)'},verifyTitle:{color:'#fff',fontSize:14,fontWeight:'900',marginTop:8},verifyCopy:{color:'#e2e7ee',fontSize:10,lineHeight:14,textAlign:'center',maxWidth:260,marginTop:5},verifyButton:{marginTop:11,paddingHorizontal:15,paddingVertical:9,borderRadius:15,backgroundColor:C.pink,borderWidth:1,borderColor:'#ff78df'},verifyButtonText:{color:'#fff',fontSize:10,fontWeight:'900'},
+ mediaWrap:{overflow:'hidden'},verifyOverlay:{...StyleSheet.absoluteFill,alignItems:'center',justifyContent:'center',padding:18,backgroundColor:'rgba(4,7,13,.16)'},verifyTitle:{color:'#fff',fontSize:14,fontWeight:'900',marginTop:8},verifyCopy:{color:'#e2e7ee',fontSize:10,lineHeight:14,textAlign:'center',maxWidth:260,marginTop:5},verifyButton:{marginTop:11,paddingHorizontal:15,paddingVertical:9,borderRadius:15,backgroundColor:C.pink,borderWidth:1,borderColor:'#ff78df'},verifyButtonText:{color:'#fff',fontSize:10,fontWeight:'900'},
  reactedSummary:{paddingHorizontal:13,paddingTop:9,paddingBottom:2},reactedLabel:{color:C.faint,fontSize:8,fontWeight:'900',textTransform:'uppercase',letterSpacing:.5},reactedNames:{color:C.muted,fontSize:9.5,lineHeight:13,marginTop:2},actions:{height:50,flexDirection:'row',alignItems:'center',paddingHorizontal:13,gap:10,borderTopWidth:1,borderTopColor:C.line},reactionLauncher:{minWidth:52,height:38,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingHorizontal:9,borderRadius:19,backgroundColor:C.panel2,borderWidth:1,borderColor:C.line},negativeLauncher:{backgroundColor:'#161417'},reactionActive:{borderColor:C.pink,backgroundColor:'rgba(190,37,170,.16)'},launcherEmoji:{fontSize:20},launcherCount:{color:C.gold,fontSize:9,fontWeight:'900'},negativeCount:{color:'#e19a9a'},action:{minWidth:46,height:42,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5},actionText:{color:C.muted,fontSize:10,fontWeight:'700'},dislikePrivacy:{color:C.faint,fontSize:8.5,paddingHorizontal:13,paddingBottom:7},
  commentsLink:{paddingHorizontal:13,paddingBottom:11},commentsLinkText:{color:C.cyan2,fontSize:10,fontWeight:'900'},
  commentsPanel:{paddingHorizontal:10,paddingBottom:12,borderTopWidth:1,borderTopColor:C.line},commentRow:{flexDirection:'row',alignItems:'flex-start',gap:8,paddingTop:10},commentReply:{marginLeft:24},commentAvatar:{width:30,height:30,borderRadius:10},commentBubble:{flex:1,backgroundColor:C.panel2,borderRadius:13,paddingHorizontal:9,paddingVertical:7},commentHead:{flexDirection:'row',alignItems:'center',gap:7},commentName:{color:C.text,fontSize:10,fontWeight:'900',flex:1},commentTime:{color:C.faint,fontSize:8},commentBody:{color:C.text,fontSize:11.5,lineHeight:16,marginTop:3},commentError:{color:'#ff9aa8',fontSize:9,marginTop:7},
@@ -239,4 +233,3 @@ const s=StyleSheet.create({
  modalShade:{flex:1,backgroundColor:'rgba(0,0,0,.72)',justifyContent:'flex-end'},palette:{maxHeight:'66%',backgroundColor:'#0a1220',borderTopLeftRadius:24,borderTopRightRadius:24,padding:16,borderTopWidth:1,borderColor:C.line},paletteTitle:{color:C.text,fontSize:15,fontWeight:'900',marginBottom:10},paletteGrid:{flexDirection:'row',flexWrap:'wrap',gap:8,paddingBottom:18},reactionChoice:{width:'31%',minHeight:66,borderRadius:14,backgroundColor:C.panel2,borderWidth:1,borderColor:C.line,alignItems:'center',justifyContent:'center',padding:7},reactionChoiceActive:{borderColor:C.pink,backgroundColor:'rgba(190,37,170,.16)'},reactionEmoji:{fontSize:25},reactionLabel:{color:C.muted,fontSize:8.5,fontWeight:'800',marginTop:4,textAlign:'center'},
  empty:{alignItems:'center',paddingTop:70},emptyTitle:{color:C.text,fontSize:16,fontWeight:'900',marginTop:12},emptySub:{color:C.muted,fontSize:11,marginTop:5}
 });
-

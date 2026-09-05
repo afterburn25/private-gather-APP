@@ -15,7 +15,7 @@ export class CallManager{
     this.systemAnswer=onAnswer;this.systemEnd=onEnd;
     if(!this.configured){
       try{
-        await RNCallKeep.setup({ios:{appName:'Private Gather',supportsVideo:true,maximumCallsPerCallGroup:1,maximumCallGroups:1,displayCallReachabilityTimeout:15000},android:{alertTitle:'Enable Private Gather calling',alertDescription:'Allow Private Gather to show and manage private voice/video calls.',cancelButton:'Not now',okButton:'Enable',additionalPermissions:[],foregroundService:{channelId:'private-gather-calls',channelName:'Private Gather calls',notificationTitle:'Private Gather call',notificationIcon:'mipmap/ic_launcher'}}});
+        await RNCallKeep.setup({ios:{appName:'Private Gather',supportsVideo:true,maximumCallsPerCallGroup:1,maximumCallGroups:1,displayCallReachabilityTimeout:15000},android:{alertTitle:'Enable Private Gather calling',alertDescription:'Allow Private Gather to show and manage private voice/video calls.',cancelButton:'Not now',okButton:'Enable',additionalPermissions:[],foregroundService:{channelId:'private-gather-calls',channelName:'Private Gather calls',notificationTitle:'Private Gather call',notificationIcon:'mipmap/ic_launcher'}}} as any);
         RNCallKeep.addEventListener('answerCall',({callUUID}:any)=>{const id=callIdFromUuid(String(callUUID));if(id&&id===this.callId){if(Platform.OS==='android')Promise.resolve(RNCallKeep.backToForeground()).catch(()=>{});this.systemAnswer?.(id);}});
         RNCallKeep.addEventListener('endCall',({callUUID}:any)=>{const id=callIdFromUuid(String(callUUID));if(id&&id===this.callId)this.systemEnd?.(id);});
         this.callKeepReady=true;
@@ -48,7 +48,7 @@ export class CallManager{
     for(let attempt=0;attempt<3;attempt++){
       try{await post(path,{});return}catch(e){
         if(attempt===2){console.warn('Private Gather call finalization retry exhausted',id,action,String((e as any)?.message||e));return}
-        await new Promise(resolve=>setTimeout(resolve,delay));delay*=2;
+        await new Promise<void>(resolve=>setTimeout(()=>resolve(),delay));delay*=2;
       }
     }
   }
@@ -81,14 +81,12 @@ export class CallManager{
     if(audio)wanted.push(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
     if(mode==='video')wanted.push(PermissionsAndroid.PERMISSIONS.CAMERA);
     if(!wanted.length)return;
-    const result=await PermissionsAndroid.requestMultiple(wanted);
+    const result:any=await PermissionsAndroid.requestMultiple(wanted);
     const denied=wanted.filter(p=>result[p]!==PermissionsAndroid.RESULTS.GRANTED);
     if(denied.length)throw new Error(mode==='video'?(audio?'Private Gather needs camera and microphone permission for video calls.':'Private Gather needs camera permission for your video preview.'):'Private Gather needs microphone permission for voice calls.');
   }
 
   private videoConstraints(){
-    // Prefer a native portrait stream so a full-phone preview does not have to crop a
-    // landscape/4:3 source heavily. Fallbacks below keep older Samsung cameras working.
     return {facingMode:'user',width:720,height:1280,aspectRatio:9/16,frameRate:24};
   }
 
@@ -109,7 +107,7 @@ export class CallManager{
         const stream=await mediaDevices.getUserMedia(constraints) as MediaStream;
         const video=stream.getVideoTracks?.()[0];
         if(video){
-          try{await video.applyConstraints?.({...this.videoConstraints(),advanced:[{zoom:1}]})}catch{try{await video.applyConstraints?.(this.videoConstraints())}catch{}}
+          try{await video.applyConstraints?.({...this.videoConstraints(),advanced:[{zoom:1}]} as any)}catch{try{await video.applyConstraints?.(this.videoConstraints())}catch{}}
           console.log('Private Gather local video ready',String(video.id||''),JSON.stringify(video.getSettings?.()||{}));
           return stream;
         }
@@ -126,7 +124,7 @@ export class CallManager{
         return await post(`/calls/${this.callId}/signal`,{kind,payload:JSON.stringify(payload)});
       }catch(e){
         last=e;
-        if(attempt<3)await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)));
+        if(attempt<3)await new Promise<void>(resolve=>setTimeout(()=>resolve(),350*(attempt+1)));
       }
     }
     throw last||new Error(`Could not send ${kind} call signal.`);
@@ -135,11 +133,12 @@ export class CallManager{
   private async waitForIceGathering(timeoutMs=3400){
     if(!this.pc||this.pc.iceGatheringState==='complete')return;
     await new Promise<void>(resolve=>{
+      const pc:any=this.pc;
       let done=false;
-      const finish=()=>{if(done)return;done=true;clearTimeout(timer);try{this.pc?.removeEventListener?.('icegatheringstatechange',onState as any)}catch{}resolve()};
-      const onState=()=>{if(this.pc?.iceGatheringState==='complete')finish()};
+      const finish=()=>{if(done)return;done=true;clearTimeout(timer);try{pc?.removeEventListener?.('icegatheringstatechange',onState)}catch{}resolve()};
+      const onState=()=>{if(pc?.iceGatheringState==='complete')finish()};
       const timer=setTimeout(finish,timeoutMs);
-      try{this.pc?.addEventListener?.('icegatheringstatechange',onState as any)}catch{}
+      try{pc?.addEventListener?.('icegatheringstatechange',onState)}catch{}
     });
   }
 
@@ -150,9 +149,6 @@ export class CallManager{
   }
 
   async start(target:{userId?:number;username?:string;conversationId?:number},mode:'voice'|'video',peerName:string,realtimeConfig:any,onStreams:(s:Streams)=>void,onEnded:()=>void){
-    // Start the server request and local A/V acquisition at the same time. Camera
-    // startup can never hold the server call hostage, but the caller still gets an
-    // immediate local preview as soon as the device camera becomes available.
     this.onStreams=onStreams;this.onEnded=onEnded;this.mode=mode;
     const mediaPromise=(async()=>{
       const local=await this.captureLocal(mode,true);
@@ -207,14 +203,8 @@ export class CallManager{
     const detail=(await get(`/calls/${callId}`)).data;
     this.isCaller=!!detail.caller;this.remoteUserId=Number(detail?.peer?.id||0);this.mode=detail.mode==='video'?'video':'voice';
 
-    // Samsung and several Android camera stacks do not reliably allow a second
-    // getUserMedia request while the preview stream still owns the camera.
     this.clearIncomingPreview();
-    if(preparedLocal){
-      this.local=preparedLocal;
-    }else{
-      this.local=await this.captureLocal(this.mode,true);
-    }
+    if(preparedLocal){this.local=preparedLocal;}else{this.local=await this.captureLocal(this.mode,true);}
     this.assertVideoTrack(this.local);
     this.onStreams({local:this.local,detail,status:detail.status});
 
@@ -222,39 +212,26 @@ export class CallManager{
     this.local.getTracks().forEach(track=>this.pc?.addTrack(track,this.local!));
     try{for(const tr of this.pc.getTransceivers?.()||[]){tr.direction='sendrecv';}}catch{}
 
-    this.pc.ontrack=e=>{
+    this.pc.ontrack=(e:any)=>{
       const event:any=e as any;
       const track:any=event.track;
       if(!track)return;
-
       if(!this.remote)this.remote=new MediaStream();
-      if(!this.remote.getTracks().some((t:any)=>String(t.id)===String(track.id))){
-        try{this.remote.addTrack(track)}catch{}
-      }
-
+      if(!this.remote.getTracks().some((t:any)=>String(t.id)===String(track.id))){try{this.remote.addTrack(track)}catch{}}
       if(track.kind==='video'){
         if(!this.remoteVideo)this.remoteVideo=new MediaStream();
-        if(!this.remoteVideo.getVideoTracks().some((t:any)=>String(t.id)===String(track.id))){
-          try{this.remoteVideo.addTrack(track)}catch{}
-        }
+        if(!this.remoteVideo.getVideoTracks().some((t:any)=>String(t.id)===String(track.id))){try{this.remoteVideo.addTrack(track)}catch{}}
         this.remoteVideoRecoveryAttempts=0;clearTimeout(this.remoteVideoRecoveryTimer);
       }
-
       const renderStream=track.kind==='video'?this.remoteVideo:this.remoteVideo||this.remote;
       this.remoteRevision++;
       console.log('Private Gather remote track',String(track.kind||'unknown'),'videoTracks',this.remoteVideo?.getVideoTracks?.().length||0,'allTracks',this.remote?.getTracks?.().length||0);
       this.onStreams?.({local:this.local,remote:renderStream,detail,status:'active',remoteRevision:this.remoteRevision});
-
-      try{
-        track.addEventListener?.('unmute',()=>{
-          this.remoteRevision++;
-          this.onStreams?.({local:this.local,remote:this.remoteVideo||this.remote,detail,status:'active',remoteRevision:this.remoteRevision});
-        });
-      }catch{}
+      try{track.addEventListener?.('unmute',()=>{this.remoteRevision++;this.onStreams?.({local:this.local,remote:this.remoteVideo||this.remote,detail,status:'active',remoteRevision:this.remoteRevision});});}catch{}
       if(track.kind!=='video')this.armRemoteVideoRecovery();
     };
 
-    this.pc.onicecandidate=e=>{if(e.candidate)this.sendSignal('ice',e.candidate).catch(()=>{});};
+    this.pc.onicecandidate=(e:any)=>{if(e.candidate)this.sendSignal('ice',e.candidate).catch(()=>{});};
     this.pc.onconnectionstatechange=()=>{
       const state=String(this.pc?.connectionState||'');
       this.onStreams?.({local:this.local,remote:this.remote,detail,status:state,remoteRevision:this.remoteRevision});
@@ -263,12 +240,10 @@ export class CallManager{
     };
 
     if(realtimeConfig){
-      try{
-        this.realtime=new ReverbClient(realtimeConfig);this.realtime.connect();this.unsub=this.realtime.subscribe(`private-call.${callId}`,e=>this.handleRealtime(e));
-      }catch(e){console.warn('Private Gather call realtime fast path unavailable; HTTP recovery remains active.',String((e as any)?.message||e));}
+      try{this.realtime=new ReverbClient(realtimeConfig);this.realtime.connect();this.unsub=this.realtime.subscribe(`private-call.${callId}`,(e:any)=>this.handleRealtime(e));}
+      catch(e){console.warn('Private Gather call realtime fast path unavailable; HTTP recovery remains active.',String((e as any)?.message||e));}
     }
     this.startCallPolling(callId);
-
     if(String(detail.status||'')==='active'){
       if(this.isCaller)this.ensureActiveOffer();
       else this.sendSignal('restart',{reason:'native-callee-media-ready',at:new Date().toISOString()}).catch(()=>{});
@@ -276,25 +251,14 @@ export class CallManager{
     return {detail,local:this.local};
   }
 
-  // Server answer is deliberately separate from opening camera/microphone so the
-  // ringing state stops immediately when the user taps Answer.
   async answer(){
     if(!this.callId)return;
     await post(`/calls/${this.callId}/answer`,{});
     if(this.callKeepReady){try{RNCallKeep.setCurrentCallActive(callUuid(this.callId));}catch{}}
   }
 
-  async decline(){
-    const id=this.callId;if(!id)return;
-    this.ignoreCall(id);this.closing=true;this.teardown();
-    this.finishServerCall(id,'decline').catch(()=>this.finishServerCall(id,'end').catch(()=>{}));
-  }
-  async end(){
-    if(this.closing)return;
-    const id=this.callId;if(id)this.ignoreCall(id);
-    this.closing=true;this.teardown();
-    if(id)this.finishServerCall(id,'end').catch(()=>{});
-  }
+  async decline(){const id=this.callId;if(!id)return;this.ignoreCall(id);this.closing=true;this.teardown();this.finishServerCall(id,'decline').catch(()=>this.finishServerCall(id,'end').catch(()=>{}));}
+  async end(){if(this.closing)return;const id=this.callId;if(id)this.ignoreCall(id);this.closing=true;this.teardown();if(id)this.finishServerCall(id,'end').catch(()=>{});}
 
   toggleMute(){const track=this.local?.getAudioTracks?.()[0];if(!track)return this.muted;this.muted=!this.muted;track.enabled=!this.muted;return this.muted;}
   toggleVideo(){const track=this.local?.getVideoTracks?.()[0];if(!track)return false;track.enabled=!track.enabled;return track.enabled;}
@@ -306,12 +270,8 @@ export class CallManager{
       if(this.pollStopped||this.callId!==callId)return;
       if(!this.pollBusy){
         this.pollBusy=true;
-        try{
-          const row=await get(`/calls/${callId}/poll?after=${this.pollAfter}`);
-          for(const signal of (Array.isArray(row?.signals)?row.signals:[]))await this.handleSignal(signal,'poll');
-          this.pollAfter=Math.max(this.pollAfter,Number(row?.last_id||this.pollAfter));
-          this.applyStatus(String(row?.status||''));
-        }catch{}finally{this.pollBusy=false}
+        try{const row=await get(`/calls/${callId}/poll?after=${this.pollAfter}`);for(const signal of (Array.isArray(row?.signals)?row.signals:[]))await this.handleSignal(signal,'poll');this.pollAfter=Math.max(this.pollAfter,Number(row?.last_id||this.pollAfter));this.applyStatus(String(row?.status||''));}
+        catch{}finally{this.pollBusy=false}
       }
       if(!this.pollStopped&&this.callId===callId)this.pollTimer=setTimeout(tick,700);
     };tick();
@@ -328,11 +288,7 @@ export class CallManager{
     if(['ended','declined','missed','canceled'].includes(status))this.remoteClose();
   }
 
-  private ensureActiveOffer(){
-    if(!this.isCaller||!this.pc||this.closing||this.activeOfferStarted)return;
-    this.activeOfferStarted=true;
-    this.createOffer(true).catch(e=>{this.activeOfferStarted=false;console.warn('Private Gather post-answer offer failed',String((e as any)?.message||e));});
-  }
+  private ensureActiveOffer(){if(!this.isCaller||!this.pc||this.closing||this.activeOfferStarted)return;this.activeOfferStarted=true;this.createOffer(true).catch(e=>{this.activeOfferStarted=false;console.warn('Private Gather post-answer offer failed',String((e as any)?.message||e));});}
 
   private armRemoteVideoRecovery(){
     clearTimeout(this.remoteVideoRecoveryTimer);
@@ -343,10 +299,7 @@ export class CallManager{
     this.remoteVideoRecoveryTimer=setTimeout(async()=>{
       if(this.closing||live())return;
       this.remoteVideoRecoveryAttempts++;
-      try{
-        if(this.isCaller){this.activeOfferStarted=false;this.ensureActiveOffer();}
-        else await this.sendSignal('restart',{reason:'native-remote-video-missing',attempt:this.remoteVideoRecoveryAttempts,at:new Date().toISOString()});
-      }catch{}
+      try{if(this.isCaller){this.activeOfferStarted=false;this.ensureActiveOffer();}else await this.sendSignal('restart',{reason:'native-remote-video-missing',attempt:this.remoteVideoRecoveryAttempts,at:new Date().toISOString()});}catch{}
       if(!live())this.armRemoteVideoRecovery();
     },4000);
   }
@@ -372,29 +325,15 @@ export class CallManager{
     if(signalId&&this.seenSignalIds.has(signalId))return;
     if(signalId)this.seenSignalIds.add(signalId);
     let payload:any={};try{payload=typeof s?.payload==='string'?JSON.parse(s.payload||'{}'):(s?.payload||{})}catch{payload={}}
-    if(s?.kind==='restart'){
-      if(this.isCaller&&this.pc){this.activeOfferStarted=true;try{await this.createOffer(true)}catch(e){this.activeOfferStarted=false;throw e}}
-      return;
-    }
+    if(s?.kind==='restart'){if(this.isCaller&&this.pc){this.activeOfferStarted=true;try{await this.createOffer(true)}catch(e){this.activeOfferStarted=false;throw e}}return;}
     if(s?.kind==='offer'){
       if(this.isCaller||!this.pc)return;
-      await this.pc.setRemoteDescription(new RTCSessionDescription(payload));
-      await this.flushIce();
+      await this.pc.setRemoteDescription(new RTCSessionDescription(payload));await this.flushIce();
       const answer=await this.pc.createAnswer();
       if(this.mode==='video'&&!/(^|\r?\n)m=video\s/m.test(String(answer?.sdp||'')))throw new Error('Private Gather WebRTC answer is missing the video media section.');
-      await this.pc.setLocalDescription(answer);
-      await this.waitForIceGathering();
-      await this.sendSignal('answer',this.pc.localDescription||answer);
-      this.armRemoteVideoRecovery();
-      return;
+      await this.pc.setLocalDescription(answer);await this.waitForIceGathering();await this.sendSignal('answer',this.pc.localDescription||answer);this.armRemoteVideoRecovery();return;
     }
-    if(s?.kind==='answer'){
-      if(!this.isCaller||!this.pc)return;
-      await this.pc.setRemoteDescription(new RTCSessionDescription(payload));
-      await this.flushIce();
-      this.armRemoteVideoRecovery();
-      return;
-    }
+    if(s?.kind==='answer'){if(!this.isCaller||!this.pc)return;await this.pc.setRemoteDescription(new RTCSessionDescription(payload));await this.flushIce();this.armRemoteVideoRecovery();return;}
     if(s?.kind==='ice'){await this.addIce(payload);return}
     if(s?.kind==='hangup')this.remoteClose();
   }

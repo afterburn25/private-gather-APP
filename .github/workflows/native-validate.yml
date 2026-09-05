@@ -1,57 +1,110 @@
 name: Native Validate
+
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    branches: [main]
     paths:
       - 'App.tsx'
       - 'index.ts'
       - 'app.json'
       - 'app.config.js'
       - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.gitignore'
+      - '.github/workflows/native-validate.yml'
+      - 'plugins/**'
+      - 'src/**'
+      - 'scripts/**'
+  push:
+    branches: [main]
+    paths:
+      - 'App.tsx'
+      - 'index.ts'
+      - 'app.json'
+      - 'app.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.gitignore'
+      - '.github/workflows/native-validate.yml'
       - 'plugins/**'
       - 'src/**'
       - 'scripts/**'
 
+concurrency:
+  group: native-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
+  public-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+      - name: Public repository secret/file gate
+        run: node scripts/ci-public-safety.mjs
+
   android:
+    needs: public-safety
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - uses: actions/setup-java@v4
+          node-version: 22.23.2
+          cache: npm
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
-      - name: Install
-        run: npm install --no-audit --no-fund
+          java-version: '17'
+      - name: Install exact dependencies
+        run: npm ci --no-audit --no-fund
       - name: Ready check
-        run: node scripts/check-ready.mjs
+        run: npm run check:ready
       - name: Typecheck
         run: npm run typecheck
+      - name: Expo config
+        run: npx expo config --type public >/tmp/private-gather-expo-config.txt
       - name: Generate Android project
         run: npx expo prebuild --clean --platform android
-      - name: Build debug APK
+      - name: Kotlin compile gate
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew :app:compileDebugKotlin --console=plain
+      - name: Build debug APK in CI
+        working-directory: android
+        run: ./gradlew assembleDebug --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: private-gather-android-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
 
   ios-prebuild:
+    needs: public-safety
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Install
-        run: npm install --no-audit --no-fund
+          node-version: 22.23.2
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Ready check
+        run: npm run check:ready
       - name: Typecheck
         run: npm run typecheck
       - name: Generate iOS project
