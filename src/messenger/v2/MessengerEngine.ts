@@ -28,7 +28,7 @@ export class MessengerEngine{
       this.rtConfig=(await get('/realtime/config')).data;
       if(this.rtConfig?.enabled){
         this.rt=new ReverbClient(this.rtConfig);
-        this.rt.connect();
+        this.rt.ensureConnected();
         if(this.rtConfig.user_channel)this.userUnsub=this.rt.subscribe(this.rtConfig.user_channel,e=>this.handleUserEvent(e));
       }
     }catch(e){console.warn('Messenger V2 realtime unavailable; cache + REST recovery active.',String((e as any)?.message||e))}
@@ -36,6 +36,7 @@ export class MessengerEngine{
     this.flushTimer=setInterval(()=>this.flushOutbox().catch(()=>{}),5000);
     this.appStateSub=AppState.addEventListener('change',state=>{
       if(state==='active'){
+        this.rt?.ensureConnected();
         this.refreshInbox().catch(()=>{});
         if(this.activeConversation)this.refreshConversation(this.activeConversation).catch(()=>{});
         this.flushOutbox().catch(()=>{});
@@ -74,6 +75,7 @@ export class MessengerEngine{
 
   async openConversation(conversationId:number){
     this.activeConversation=conversationId;
+    this.rt?.ensureConnected();
     this.subscribePresence(conversationId);
     return this.refreshConversation(conversationId);
   }
@@ -110,7 +112,7 @@ export class MessengerEngine{
     }
   }
 
-  async retryMessage(conversationId:number,localKey:string){await this.store.retryNow(localKey);this.emit(`conversation:${conversationId}`);await this.flushOutbox()}
+  async retryMessage(conversationId:number,localKey:string){await this.store.retryNow(localKey);this.emit(`conversation:${conversationId}`);this.rt?.ensureConnected();await this.flushOutbox()}
   async discardMessage(conversationId:number,localKey:string){await this.store.removeOptimistic(localKey);this.emit(`conversation:${conversationId}`)}
 
   async flushOutbox(){
