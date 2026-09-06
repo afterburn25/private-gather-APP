@@ -189,6 +189,18 @@ export class MessengerStore{
     return db.getAllAsync<OutboxRow>('SELECT local_key,conversation_id,payload_json,attempts FROM outbox WHERE next_attempt_ms<=? ORDER BY next_attempt_ms ASC LIMIT 20',Date.now());
   }
 
+  async getValue(key:string):Promise<string|null>{
+    const db=await this.ready();
+    const row=await db.getFirstAsync<any>('SELECT value FROM kv WHERE key=?',key);
+    return row?.value===null||row?.value===undefined?null:String(row.value);
+  }
+
+  async setValue(key:string,value:string|null){
+    const db=await this.ready();
+    if(value===null){await db.runAsync('DELETE FROM kv WHERE key=?',key);return;}
+    await db.runAsync('INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',key,value);
+  }
+
   async setUnread(conversationId:number,unread:number){
     const db=await this.ready();
     const row=await db.getFirstAsync<any>('SELECT raw_json FROM conversations WHERE id=?',conversationId);
