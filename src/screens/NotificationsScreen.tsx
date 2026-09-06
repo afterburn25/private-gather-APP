@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useMemo,useState} from 'react';
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import * as Notifications from 'expo-notifications';
 import {get,post} from '../api/client';
 import {NotificationCard} from '../app/types';
 import {C} from '../theme';
@@ -20,8 +21,8 @@ const filters:{key:FilterKey;label:string;ios:string;android:string}[]=[
 
 export default function NotificationsScreen({onBack,onTarget,onCount}:{onBack:()=>void;onTarget:(t:NonNullable<NotificationCard['target']>)=>void;onCount:(n:number)=>void}){
  const [items,setItems]=useState<NotificationCard[]>([]);const [unread,setUnread]=useState(0);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [filter,setFilter]=useState<FilterKey>('all');
- const load=useCallback(async()=>{try{setLoading(true);setError('');const r=await get('/notifications');setItems(Array.isArray(r.data)?r.data:[]);setUnread(Number(r.unread_count||0));onCount(Number(r.unread_count||0));}catch(e:any){setError(String(e?.message||e));}finally{setLoading(false)}},[onCount]);useEffect(()=>{load()},[load]);
- const markAll=async()=>{try{await post('/notifications/read-all',{});setUnread(0);setItems(v=>v.map(n=>({...n,read:true})));onCount(0)}catch(e:any){setError(String(e?.message||e))}};
+ const load=useCallback(async()=>{try{setLoading(true);setError('');const r=await get('/notifications');const count=Number(r.unread_count||0);setItems(Array.isArray(r.data)?r.data:[]);setUnread(count);onCount(count);Notifications.setBadgeCountAsync(count).catch(()=>{});}catch(e:any){setError(String(e?.message||e));}finally{setLoading(false)}},[onCount]);useEffect(()=>{load()},[load]);
+ const markAll=async()=>{try{await post('/notifications/read-all',{});setUnread(0);setItems(v=>v.map(n=>({...n,read:true})));onCount(0);Notifications.setBadgeCountAsync(0).catch(()=>{});}catch(e:any){setError(String(e?.message||e))}};
  const shown=useMemo(()=>filter==='all'?items:items.filter(n=>bucket(n)===filter),[items,filter]);
  const counts=useMemo(()=>{const map:any={all:items.length};for(const f of filters.slice(1))map[f.key]=items.filter(n=>bucket(n)===f.key).length;return map},[items]);
  return <ScrollView style={s.page} contentContainerStyle={s.content} stickyHeaderIndices={[2]}>
