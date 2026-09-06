@@ -50,12 +50,14 @@ cd android
 ```
 
 ## Current candidate
-- Native: **1.3.0 Rev4 Rev2**
-- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev2-Prebuild-Template-Interpolation-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
-- SHA-256: `d92f848fdfc2884629242c7fb84912d1b6d59212d6bbe3c8d07e9d3ff823fa38`
+- Native: **1.3.0 Rev4 Rev3**
+- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev3-Messenger-Prebuild-Anchor-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
+- SHA-256: `ae0719f8e2050d23989bd3533abe873d9f32732108d700faddce3d2229c47610`
 - Status: **prepared candidate / physical-device testing**
 
-Rev4 Rev2 supersedes the original Rev4 Native App ZIP. The original Rev4 failed Main `expo prebuild --clean` with `PluginError: reactContext is not defined` because a Kotlin `${reactContext.packageName}` expression inside `withPrivateGatherNativeCalling.js` was not escaped for the JavaScript template literal. Rev4 Rev2 escapes it and adds a readiness regression scan so unescaped `${reactContext...}` plugin-template interpolation fails before prebuild.
+Rev4 Rev3 supersedes Rev4 Rev2. Rev4 Rev2 fixed the Main `PluginError: reactContext is not defined`; physical Windows testing then reached Messenger and exposed a second, Messenger-only prebuild failure. The Messenger enhancement still searched for the older hard-coded `manager.notify(41000 + ...)` line while the base generator now emits `manager.notify(notificationId(callId), notification)`. Rev4 Rev3 supports the current generator line and retains the old line as a compatibility fallback.
+
+`npm run check:ready` now executes a generated Messenger native-call plugin-composition test, so this exact generator/enhancement mismatch is caught before prebuild. The build command is unchanged. On any future prebuild failure the script saves `dist\prebuild-main.log` or `dist\prebuild-messenger.log` and prints the last 60 lines automatically.
 
 All Rev4 behavior remains included:
 - Messenger Show/Hide Password; no password auto-capitalization/autocorrect.
@@ -68,7 +70,7 @@ All Rev4 behavior remains included:
 - Messenger does not use a second branded Private Gather startup overlay/splash.
 
 ## Paired website candidate
-Website **1.1.206 is unchanged by Rev4 Rev2**. Do not reinstall the website solely for this Native prebuild hotfix.
+Website **1.1.206 is unchanged by Rev4 Rev3**. Do not reinstall the website solely for this Native prebuild hotfix.
 
 - Website Core: **1.1.206** — `Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip`
 - Core SHA-256: `d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b`
