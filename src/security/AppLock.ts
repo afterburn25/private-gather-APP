@@ -38,7 +38,7 @@ export async function enableAppLock(pin:string,useBiometric:boolean,timeoutSecon
   if(useBiometric){
     const supported=await Keychain.getSupportedBiometryType();
     if(!supported)throw new Error('Biometric authentication is not enrolled on this device.');
-    await Keychain.setGenericPassword('unlock','private-gather-app-lock',{service:BIO_SERVICE,accessible:Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,accessControl:Keychain.ACCESS_CONTROL.BIOMETRY_ANY,authenticationType:Keychain.AUTHENTICATION_TYPE.BIOMETRICS});
+    await Keychain.setGenericPassword('unlock','private-gather-app-lock',{service:BIO_SERVICE,accessible:Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,accessControl:Keychain.ACCESS_CONTROL.BIOMETRY_ANY});
     biometric=true;
   }else{
     await Keychain.resetGenericPassword({service:BIO_SERVICE}).catch(()=>{});
@@ -53,7 +53,7 @@ export async function updateAppLockBiometric(enabled:boolean){
   if(enabled){
     const supported=await Keychain.getSupportedBiometryType();
     if(!supported)throw new Error('Biometric authentication is not enrolled on this device.');
-    await Keychain.setGenericPassword('unlock','private-gather-app-lock',{service:BIO_SERVICE,accessible:Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,accessControl:Keychain.ACCESS_CONTROL.BIOMETRY_ANY,authenticationType:Keychain.AUTHENTICATION_TYPE.BIOMETRICS});
+    await Keychain.setGenericPassword('unlock','private-gather-app-lock',{service:BIO_SERVICE,accessible:Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,accessControl:Keychain.ACCESS_CONTROL.BIOMETRY_ANY});
   }else await Keychain.resetGenericPassword({service:BIO_SERVICE}).catch(()=>{});
   const next={...current,biometric:enabled};await writeConfig(next);return next;
 }
