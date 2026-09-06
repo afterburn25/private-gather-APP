@@ -154,6 +154,11 @@ export class CallManager{
     if(!video)throw new Error('Private Gather video call started without a camera track.');
   }
 
+  private remoteRenderStream(){
+    if(this.mode==='video')return this.remoteVideo?.getVideoTracks?.().length?this.remoteVideo:undefined;
+    return this.remote;
+  }
+
   private syncRemoteReceivers(detail?:any,status='active'){
     if(!this.pc)return false;
     if(!this.remote)this.remote=new MediaStream();
@@ -173,7 +178,7 @@ export class CallManager{
         }
       }
     }catch{}
-    const render=this.remoteVideo?.getVideoTracks?.().length?this.remoteVideo:this.remote;
+    const render=this.remoteRenderStream();
     const hasVideo=!!this.remoteVideo?.getVideoTracks?.().some((track:any)=>String(track.readyState||'live')==='live');
     if(changed||hasVideo){
       this.remoteRevision++;
@@ -296,7 +301,7 @@ export class CallManager{
         this.remoteVideoRecoveryAttempts=0;clearTimeout(this.remoteVideoRecoveryTimer);
       }
 
-      const renderStream=track.kind==='video'?this.remoteVideo:this.remoteVideo||this.remote;
+      const renderStream=this.remoteRenderStream();
       this.remoteRevision++;
       console.log('Private Gather remote track',String(track.kind||'unknown'),'videoTracks',this.remoteVideo?.getVideoTracks?.().length||0,'allTracks',this.remote?.getTracks?.().length||0);
       this.onStreams?.({local:this.local,remote:renderStream,detail,status:'active',remoteRevision:this.remoteRevision});
@@ -304,7 +309,7 @@ export class CallManager{
       try{
         track.addEventListener?.('unmute',()=>{
           this.remoteRevision++;
-          this.onStreams?.({local:this.local,remote:this.remoteVideo||this.remote,detail,status:'active',remoteRevision:this.remoteRevision});
+          this.onStreams?.({local:this.local,remote:this.remoteRenderStream(),detail,status:'active',remoteRevision:this.remoteRevision});
         });
       }catch{}
       if(track.kind!=='video')this.armRemoteVideoRecovery();
@@ -313,7 +318,7 @@ export class CallManager{
     this.pc.onicecandidate=(e:any)=>{if(e.candidate)this.sendSignal('ice',e.candidate).catch(()=>{});};
     this.pc.onconnectionstatechange=()=>{
       const state=String(this.pc?.connectionState||'');
-      this.onStreams?.({local:this.local,remote:this.remoteVideo||this.remote,detail,status:state,remoteRevision:this.remoteRevision});
+      this.onStreams?.({local:this.local,remote:this.remoteRenderStream(),detail,status:state,remoteRevision:this.remoteRevision});
       if(state==='connected'){this.syncRemoteReceivers(detail,state);this.scheduleReceiverSync(detail);this.armRemoteVideoRecovery();}
       if(['failed','disconnected'].includes(state)&&this.isCaller)this.createOffer(true).catch(()=>{});
     };
@@ -376,7 +381,7 @@ export class CallManager{
 
   private applyStatus(status:string){
     if(!status)return;
-    this.onStreams?.({local:this.local,remote:this.remoteVideo||this.remote,status,remoteRevision:this.remoteRevision});
+    this.onStreams?.({local:this.local,remote:this.remoteRenderStream(),status,remoteRevision:this.remoteRevision});
     if(status==='active'){
       if(this.callKeepReady){try{CallKeep.setCurrentCallActive(callUuid(this.callId));}catch{}}
       if(this.isCaller)this.ensureActiveOffer();

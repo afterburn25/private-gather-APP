@@ -2,7 +2,7 @@
   "expo": {
     "name": "Private Gather",
     "slug": "private-gather",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "scheme": "privategather",
     "userInterfaceStyle": "dark",
@@ -68,8 +68,7 @@
       ["expo-splash-screen",{"backgroundColor":"#100e12","image":"./assets/splash-transparent.png","imageWidth":1,"resizeMode":"contain","dark":{"image":"./assets/splash-transparent.png","backgroundColor":"#100e12"}}],
       ["expo-notifications",{"defaultChannel":"pg-calls-v200","enableBackgroundRemoteNotifications":true,"icon":"./assets/notification-icon.png","color":"#ff35d3","sounds":["./assets/audio/calling.wav"]}],
       ["expo-build-properties",{"ios":{"deploymentTarget":"16.4"},"android":{"compileSdkVersion":36,"targetSdkVersion":36}}],
-      "./plugins/withPrivateGatherCallLifecycleFix",
-      "./plugins/withPrivateGatherNativeCalling"
+      "./plugins/withPrivateGatherMessenger121"
     ],
     "icon": "./assets/icon.png"
   }

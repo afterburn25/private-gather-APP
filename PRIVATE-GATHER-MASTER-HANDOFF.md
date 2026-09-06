@@ -293,3 +293,11 @@ Update this handoff after:
 - a persistent device issue is discovered/resolved
 
 Do not fill the handoff with every minor conversational detail. Keep facts needed to resume development correctly.
+
+
+## Native 1.2.1 device-feedback repair
+- 1.2.0 passed GitHub exact-main validation but failed physical acceptance on call presentation/video stability and main-app return behavior.
+- 1.2.1 batches those device findings into one candidate rather than continuing one-symptom patch releases.
+- Messenger owns native calls and incoming-call presentation. Main app Messages is only a handoff entry point and returns to Home after Messenger use.
+- CI now packages a complete exact-main two-app build kit automatically after green validation.
+- GitHub validation never promotes a native candidate; physical device testing and explicit acceptance remain mandatory.
