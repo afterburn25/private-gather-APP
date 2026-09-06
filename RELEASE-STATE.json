@@ -1,11 +1,18 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "project": "Private Gather",
-  "updated_at": "2026-09-05",
+  "updated_at": "2026-09-06",
   "authority": {
     "native_repository": "afterburn25/private-gather-APP",
-    "native_branch": "main",
-    "workflow_path": ".github/workflows/native-validate.yml"
+    "native_default_branch": "main",
+    "native_1_3_source_branch": "feature/native-1.3.0-platform-expansion",
+    "continuity_files": [
+      "AI-WORKFLOW.md",
+      "LOCAL-BUILD-WORKFLOW.md",
+      "PRIVATE-GATHER-MASTER-HANDOFF.md",
+      "RELEASE-STATE.json"
+    ],
+    "user_facing_build_workflow": "LOCAL-BUILD-WORKFLOW.md"
   },
   "architecture": {
     "native_apps": [
@@ -14,47 +21,87 @@
     ],
     "pwa_parity_required": false,
     "messenger_package": "com.privoralabs.privategather.messenger",
-    "main_package": "com.privoralabs.privategather"
+    "main_package": "com.privoralabs.privategather",
+    "telecom_owner": "messenger",
+    "main_must_not_register_android_phone_account": true
+  },
+  "packaging": {
+    "always_separate_by_default": true,
+    "artifacts": [
+      "website_core_zip",
+      "website_upgrade_zip",
+      "native_app_complete_build_kit_zip"
+    ],
+    "combined_bundle_only_when_explicitly_requested": true,
+    "native_overlay_patch_is_not_normal_handoff": true
+  },
+  "local_device_test_workflow": {
+    "required_root": "C:\\PrivateGatherNative\\package.json",
+    "requires_git_clone_or_checkout": false,
+    "requires_github_actions_for_user_handoff": false,
+    "commands": [
+      "npm install --no-audit --no-fund",
+      "npm run check:ready",
+      "npm run typecheck",
+      "npx expo prebuild --clean --platform android",
+      "cd android",
+      ".\\gradlew.bat assembleDebug --no-daemon --max-workers=1",
+      "adb install -r .\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "npx expo start --dev-client --clear"
+    ]
   },
   "native": {
-    "latest_prepared_version": "1.2.1",
-    "candidate_branch": "hotfix/1.2.1-call-fullscreen-stability-home-return",
-    "status": "prepared_candidate",
-    "device_tested": false,
-    "promotion_requires_explicit_user_acceptance": true,
-    "confirmed_live_version": null
+    "main_branch_baseline_version": "1.2.1",
+    "main_branch_baseline_commit": "531cf7098ec3266bc1042248e999ad6d718713a8",
+    "native_1_3_foundation_branch": "feature/native-1.3.0-platform-expansion",
+    "native_1_3_last_github_validated_commit": "779b28127ddc4c2b4cae1c4073a43ad3e1e9b56b",
+    "native_1_3_last_github_validation_run_id": 34010605805,
+    "native_1_3_last_github_validation_run_number": 69,
+    "current_local_candidate": {
+      "version": "1.3.0 Rev2",
+      "artifact": "Private-Gather-Native-App-1.3.0-Rev2-Telecom-Startup-Splash-Repair-Complete-Direct-Windows-Build-Kit.zip",
+      "sha256": "fd92264e5af2ce79e92fb9da4e6fa61a52878865333314261eabc752fa9114bc",
+      "status": "prepared_candidate_device_testing",
+      "github_validation_claimed_for_rev2": false,
+      "device_tested": false,
+      "confirmed_live": false,
+      "promotion_requires_explicit_user_acceptance": true,
+      "changes": [
+        "Safety Center is a large card in the Main Me body directly below Verification",
+        "Safety Center/App Lock supports device biometric and Private Gather PIN flows",
+        "default-off adult-content control is present",
+        "Discreet Profile / Privacy Shield foundation is present",
+        "Main no longer owns Android Telecom/CallKeep PhoneAccount registration",
+        "Messenger remains the native calling and Android Telecom owner",
+        "branded native startup splash/overlay covers white/gray/dev bundle loading until the app is ready"
+      ]
+    },
+    "known_device_test_history": [
+      {
+        "issue": "INSTALL_FAILED_VERSION_DOWNGRADE",
+        "detail": "Generated test build had versionCode 1 while an installed older build reported versionCode 1185.",
+        "user_resolution": "User uninstalled the prior app and reinstalled successfully; do not change versionCode solely for this unless asked."
+      },
+      {
+        "issue": "Android Telecom PhoneAccount SecurityException",
+        "detail": "Main attempted CallKeep PhoneAccount registration without a protected ConnectionService.",
+        "rev2_repair": "Main is prevented from owning Telecom PhoneAccount registration; Messenger remains Telecom owner."
+      },
+      {
+        "issue": "white then gray dev loading screen with bundle counter before app",
+        "rev2_repair": "Branded native splash/startup overlay is shown first and retained while startup work occurs underneath."
+      }
+    ]
   },
-  "previous_candidate": {
-    "version": "1.2.0",
-    "validated_source_commit": "9a45c6cff0b28191195926496198b85105011853",
-    "validation_run_id": 33992709092,
-    "validation_run_number": 33,
-    "github_validation": "success",
-    "physical_device_result": "failed_acceptance",
-    "reported_failures": [
-      "transparent call letterbox/system-bar regions",
-      "rapid video flicker after answer",
-      "incoming call reduced to heads-up strip",
-      "main app remained on Messages bridge after Messenger handoff"
-    ],
-    "status": "superseded_by_1.2.1"
-  },
-  "pipeline": {
-    "matrix_android": [
-      "main",
-      "messenger"
-    ],
-    "matrix_ios_prebuild": [
-      "main",
-      "messenger"
-    ],
-    "automatic_exact_main_build_kit": true,
-    "github_green_is_not_device_acceptance": true
-  },
-  "backend": {
-    "native_messenger_foundation_version": "1.2.0",
-    "status": "prepared_candidate_or_install_state_unconfirmed",
-    "database_migration": false
+  "website": {
+    "last_user_reported_installed_version": "1.1.201",
+    "prepared_version": "1.1.204",
+    "prepared_core_artifact": "Private-Gather-1.1.204-Default-Off-Adult-Content-Marketplace-Safety-Core.zip",
+    "prepared_core_sha256": "e04d4f7903415572ee6768bc79279bc9cfcab0597c652c434592fd1092f43e88",
+    "direct_upgrade_artifact": "Private-Gather-1.1.201-to-1.1.204-Native-Wave-A-Adult-Content-Direct-Upgrade.zip",
+    "direct_upgrade_sha256": "2e4a689fea35dfb4804419d5d3584e79efb32bed4de5df48664f17dc1aefa2cc",
+    "install_acceptance_confirmed": false,
+    "packaging_separate_from_native": true
   },
   "toolchain": {
     "node_ci": "22.23.2",
@@ -65,8 +112,8 @@
     "typescript": "~6.0.3"
   },
   "promotion_policy": {
-    "github_green_is_not_device_acceptance": true,
     "device_test_required": true,
-    "explicit_user_acceptance_required": true
+    "explicit_user_acceptance_required": true,
+    "never_call_prepared_or_ci_only_build_live": true
   }
 }
