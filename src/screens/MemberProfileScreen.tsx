@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,Pressable,ScrollView,Share,StyleSheet,Text,View} from 'react-native';
 import {get} from '../api/client';
 import {Member} from '../app/types';
 import ProtectedImage from '../components/ProtectedImage';
@@ -14,8 +14,9 @@ export default function MemberProfileScreen({memberId,onBack,onMessage,onCall}:{
  const ages=[m.age,m.secondary_age].filter(Boolean).join(' / ');
  const primary=m.primary_person_name||'Primary';
  const secondary=m.secondary_person_name||'Partner';
+ const shareProfile=()=>Share.share({title:`${m.display_name} on Private Gather`,message:`${m.display_name} on Private Gather\nhttps://member.privategather.com/${encodeURIComponent(String(m.username||''))}`}).catch(()=>{});
  return <ScrollView style={s.page} contentContainerStyle={s.content}>
-   <View style={s.coverWrap}><ProtectedImage uri={m.cover_url} fallback={m.display_name} style={s.cover}/><View style={s.coverShade}/><Pressable onPress={onBack} style={s.backButton}><NativeIcon ios="chevron.left" android="arrow_back" size={24} color="#fff"/></Pressable></View>
+   <View style={s.coverWrap}><ProtectedImage uri={m.cover_url} fallback={m.display_name} style={s.cover}/><View style={s.coverShade}/><Pressable onPress={onBack} style={s.backButton}><NativeIcon ios="chevron.left" android="arrow_back" size={24} color="#fff"/></Pressable><Pressable accessibilityLabel="Share profile" onPress={shareProfile} style={s.shareButton}><NativeIcon ios="square.and.arrow.up" android="share" size={21} color="#fff"/></Pressable></View>
    <View style={s.body}>
      <ProtectedImage uri={m.avatar_url} fallback={m.display_name} style={s.avatar}/>
      <View style={s.nameLine}><Text style={s.name}>{m.display_name}{ages?` · ${ages}`:''}</Text>{m.verified?<NativeIcon ios="checkmark.seal.fill" android="verified" size={21} color={C.green}/>:null}</View>
@@ -26,6 +27,7 @@ export default function MemberProfileScreen({memberId,onBack,onMessage,onCall}:{
        {m.can_message?<Pressable onPress={()=>onMessage(m)} style={[s.action,s.primary]}><NativeIcon ios="message.fill" android="chat_bubble" size={19} color="#fff"/><Text style={s.primaryText}>Message</Text></Pressable>:null}
        {m.can_call?<Pressable onPress={()=>onCall(m,'voice')} style={s.roundAction}><NativeIcon ios="phone.fill" android="call" size={21} color={C.green}/></Pressable>:null}
        {m.can_call?<Pressable onPress={()=>onCall(m,'video')} style={s.roundAction}><NativeIcon ios="video.fill" android="videocam" size={22} color={C.green}/></Pressable>:null}
+       <Pressable accessibilityLabel="Share profile" onPress={shareProfile} style={s.roundAction}><NativeIcon ios="square.and.arrow.up" android="share" size={20} color={C.cyan2}/></Pressable>
      </View>
      {m.online?<View style={s.presence}><View style={s.online}/><Text style={s.presenceText}>{m.presence_label||'Online now'}</Text></View>:null}
 
@@ -63,7 +65,7 @@ function Info({label,value}:{label:string;value?:any}){if(value===null||value===
 function Tags({rows}:{rows:string[]}){return <View style={s.tags}>{rows.map((x,i)=><View key={`${x}-${i}`} style={s.tag}><Text style={s.tagText}>{pretty(x)}</Text></View>)}</View>}
 const s=StyleSheet.create({
  page:{flex:1,backgroundColor:C.bg},content:{paddingBottom:34},top:{height:56,paddingHorizontal:14,justifyContent:'center'},backBare:{flexDirection:'row',alignItems:'center',gap:5},back:{color:C.cyan2,fontWeight:'800'},error:{color:'#ff8d8d',padding:16},
- coverWrap:{height:210,position:'relative'},cover:{width:'100%',height:'100%'},coverShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.25)'},backButton:{position:'absolute',left:14,top:12,width:42,height:42,borderRadius:21,backgroundColor:'rgba(4,9,17,.78)',alignItems:'center',justifyContent:'center'},
+ coverWrap:{height:210,position:'relative'},cover:{width:'100%',height:'100%'},coverShade:{...StyleSheet.absoluteFill,backgroundColor:'rgba(0,0,0,.25)'},backButton:{position:'absolute',left:14,top:12,width:42,height:42,borderRadius:21,backgroundColor:'rgba(4,9,17,.78)',alignItems:'center',justifyContent:'center'},shareButton:{position:'absolute',right:14,top:12,width:42,height:42,borderRadius:21,backgroundColor:'rgba(4,9,17,.78)',alignItems:'center',justifyContent:'center'},
  body:{paddingHorizontal:15},avatar:{width:108,height:108,borderRadius:30,borderWidth:4,borderColor:C.bg,marginTop:-48},nameLine:{flexDirection:'row',alignItems:'center',gap:7,marginTop:9},name:{color:C.text,fontWeight:'900',fontSize:22,flexShrink:1},handle:{color:C.cyan2,fontWeight:'700',fontSize:11,marginTop:2},meta:{color:C.muted,fontSize:10,marginTop:5,textTransform:'capitalize'},headline:{color:'#d8dfeb',fontSize:13,lineHeight:19,marginTop:11},
  actions:{flexDirection:'row',gap:9,marginTop:15},action:{height:46,paddingHorizontal:16,borderRadius:16,flexDirection:'row',gap:7,alignItems:'center',justifyContent:'center'},primary:{flex:1,backgroundColor:C.pink},primaryText:{color:'#fff',fontWeight:'900'},roundAction:{width:46,height:46,borderRadius:23,borderWidth:1,borderColor:C.line,backgroundColor:C.panel,alignItems:'center',justifyContent:'center'},
  presence:{flexDirection:'row',alignItems:'center',gap:7,marginTop:13},online:{width:8,height:8,borderRadius:4,backgroundColor:C.green},presenceText:{color:C.green,fontWeight:'700',fontSize:10},
