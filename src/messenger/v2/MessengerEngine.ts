@@ -28,7 +28,7 @@ export class MessengerEngine{
       this.rtConfig=(await get('/realtime/config')).data;
       if(this.rtConfig?.enabled){
         this.rt=new ReverbClient(this.rtConfig);
-        this.rt.connect();
+        this.rt.ensureConnected();
         if(this.rtConfig.user_channel)this.userUnsub=this.rt.subscribe(this.rtConfig.user_channel,e=>this.handleUserEvent(e));
       }
     }catch(e){console.warn('Messenger V2 realtime unavailable; cache + REST recovery active.',String((e as any)?.message||e))}
@@ -36,6 +36,7 @@ export class MessengerEngine{
     this.flushTimer=setInterval(()=>this.flushOutbox().catch(()=>{}),5000);
     this.appStateSub=AppState.addEventListener('change',state=>{
       if(state==='active'){
+        this.rt?.ensureConnected();
         this.refreshInbox().catch(()=>{});
         if(this.activeConversation)this.refreshConversation(this.activeConversation).catch(()=>{});
         this.flushOutbox().catch(()=>{});
@@ -54,6 +55,8 @@ export class MessengerEngine{
 
   async conversations():Promise<StoredConversation[]>{return this.store.conversations()}
   async messages(conversationId:number):Promise<StoredMessage[]>{return this.store.messages(conversationId)}
+  async conversationDraft(conversationId:number){return (await this.store.getValue(`draft:${conversationId}`))||''}
+  async saveConversationDraft(conversationId:number,text:string){const value=String(text||'');await this.store.setValue(`draft:${conversationId}`,value.length?value:null)}
   typingLabel(conversationId:number){return this.typing.get(conversationId)?.label||''}
 
   async refreshInbox(){
@@ -72,6 +75,7 @@ export class MessengerEngine{
 
   async openConversation(conversationId:number){
     this.activeConversation=conversationId;
+    this.rt?.ensureConnected();
     this.subscribePresence(conversationId);
     return this.refreshConversation(conversationId);
   }
@@ -104,11 +108,11 @@ export class MessengerEngine{
       return r.message;
     }catch(e){
       await this.store.failOptimistic(optimistic.key,1);this.emit(`conversation:${conversationId}`);
-      return optimistic.message;
+      return {...optimistic.message,pending:true,failed:true};
     }
   }
 
-  async retryMessage(conversationId:number,localKey:string){await this.store.retryNow(localKey);this.emit(`conversation:${conversationId}`);await this.flushOutbox()}
+  async retryMessage(conversationId:number,localKey:string){await this.store.retryNow(localKey);this.emit(`conversation:${conversationId}`);this.rt?.ensureConnected();await this.flushOutbox()}
   async discardMessage(conversationId:number,localKey:string){await this.store.removeOptimistic(localKey);this.emit(`conversation:${conversationId}`)}
 
   async flushOutbox(){
