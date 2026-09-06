@@ -8,13 +8,14 @@ export type AppLockConfig={enabled:boolean;biometric:boolean;timeoutSeconds:numb
 export type AppLockStatus=AppLockConfig&{biometryType:string|null;hasPin:boolean};
 
 const DEFAULT_CONFIG:AppLockConfig={enabled:false,biometric:false,timeoutSeconds:15};
+function normalizeTimeout(value:any){const n=Number(value);return Number.isFinite(n)&&n>=0?Math.min(3600,Math.floor(n)):15}
 
 async function readConfig():Promise<AppLockConfig>{
   try{
     const row=await Keychain.getGenericPassword({service:CONFIG_SERVICE});
     if(!row)return DEFAULT_CONFIG;
     const parsed=JSON.parse(row.password||'{}');
-    return {enabled:parsed?.enabled===true,biometric:parsed?.biometric===true,timeoutSeconds:Math.max(0,Number(parsed?.timeoutSeconds??15)||15)};
+    return {enabled:parsed?.enabled===true,biometric:parsed?.biometric===true,timeoutSeconds:normalizeTimeout(parsed?.timeoutSeconds)};
   }catch{return DEFAULT_CONFIG}
 }
 
@@ -42,7 +43,7 @@ export async function enableAppLock(pin:string,useBiometric:boolean,timeoutSecon
   }else{
     await Keychain.resetGenericPassword({service:BIO_SERVICE}).catch(()=>{});
   }
-  const config={enabled:true,biometric,timeoutSeconds:Math.max(0,Number(timeoutSeconds)||15)};
+  const config={enabled:true,biometric,timeoutSeconds:normalizeTimeout(timeoutSeconds)};
   await writeConfig(config);return config;
 }
 
@@ -55,6 +56,11 @@ export async function updateAppLockBiometric(enabled:boolean){
     await Keychain.setGenericPassword('unlock','private-gather-app-lock',{service:BIO_SERVICE,accessible:Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,accessControl:Keychain.ACCESS_CONTROL.BIOMETRY_ANY,authenticationType:Keychain.AUTHENTICATION_TYPE.BIOMETRICS});
   }else await Keychain.resetGenericPassword({service:BIO_SERVICE}).catch(()=>{});
   const next={...current,biometric:enabled};await writeConfig(next);return next;
+}
+
+export async function updateAppLockTimeout(timeoutSeconds:number){
+  const current=await readConfig();if(!current.enabled)throw new Error('Enable App Lock first.');
+  const next={...current,timeoutSeconds:normalizeTimeout(timeoutSeconds)};await writeConfig(next);return next;
 }
 
 export async function changeAppLockPin(pin:string){
