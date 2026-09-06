@@ -50,12 +50,14 @@ cd android
 ```
 
 ## Current candidate
-- Native: **1.3.0 Rev4**
-- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Messenger-Login-Cross-Device-Call-Lifecycle-Complete-Direct-Windows-Build-Kit.zip`
-- SHA-256: `a614d1402b79bd46480a722c400ae0ca8152454643bb82261ec27c764eaf8a93`
+- Native: **1.3.0 Rev4 Rev2**
+- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev2-Prebuild-Template-Interpolation-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
+- SHA-256: `d92f848fdfc2884629242c7fb84912d1b6d59212d6bbe3c8d07e9d3ff823fa38`
 - Status: **prepared candidate / physical-device testing**
 
-Rev4 includes Rev3 plus:
+Rev4 Rev2 supersedes the original Rev4 Native App ZIP. The original Rev4 failed Main `expo prebuild --clean` with `PluginError: reactContext is not defined` because a Kotlin `${reactContext.packageName}` expression inside `withPrivateGatherNativeCalling.js` was not escaped for the JavaScript template literal. Rev4 Rev2 escapes it and adds a readiness regression scan so unescaped `${reactContext...}` plugin-template interpolation fails before prebuild.
+
+All Rev4 behavior remains included:
 - Messenger Show/Hide Password; no password auto-capitalization/autocorrect.
 - Combined private Firebase Android client configuration for both Main and Messenger; never publish that JSON to GitHub.
 - Messenger realtime `incoming.call`, `call.claimed`, and `call.ended` handling.
@@ -66,6 +68,8 @@ Rev4 includes Rev3 plus:
 - Messenger does not use a second branded Private Gather startup overlay/splash.
 
 ## Paired website candidate
+Website **1.1.206 is unchanged by Rev4 Rev2**. Do not reinstall the website solely for this Native prebuild hotfix.
+
 - Website Core: **1.1.206** — `Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip`
 - Core SHA-256: `d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b`
 - Direct Upgrade: **1.1.201 → 1.1.206** — `Private-Gather-1.1.201-to-1.1.206-Native-Messenger-Call-Lifecycle-Stability-Direct-Upgrade.zip`
