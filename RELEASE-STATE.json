@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "project": "Private Gather",
   "updated_at": "2026-09-06",
   "authority": {
@@ -37,27 +37,32 @@
     "native_1_3_last_github_validation_run_id": 34010605805,
     "native_1_3_last_github_validation_run_number": 69,
     "current_local_candidate": {
-      "version": "1.3.0 Rev4",
-      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Messenger-Login-Cross-Device-Call-Lifecycle-Complete-Direct-Windows-Build-Kit.zip",
-      "sha256": "a614d1402b79bd46480a722c400ae0ca8152454643bb82261ec27c764eaf8a93",
+      "version": "1.3.0 Rev4 Rev2",
+      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev2-Prebuild-Template-Interpolation-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
+      "sha256": "d92f848fdfc2884629242c7fb84912d1b6d59212d6bbe3c8d07e9d3ff823fa38",
       "status": "prepared_candidate_device_testing",
-      "github_validation_claimed_for_rev4": false,
+      "github_validation_claimed_for_rev4_rev2": false,
       "device_tested": false,
       "confirmed_live": false,
       "promotion_requires_explicit_user_acceptance": true,
       "firebase_client_config": "private direct-kit only; combined Main+Messenger Android clients; ignored by Git",
       "firebase_admin_credentials_in_artifact": false,
       "changes": [
-        "Messenger login Show/Hide Password and no password auto-capitalization/autocorrect",
-        "combined Main+Messenger Firebase Android client configuration in private direct kit",
-        "Messenger realtime incoming.call, call.claimed and call.ended events",
-        "cross-device answer retracts stale incoming/ringing state without ending active call",
-        "failed mobile takeover of already-active web call is local-only cleanup",
-        "remote call terminal state retracts ringtone, notification and native incoming-call activity",
-        "ringer uses native loop without status-driven clip restarts",
-        "Messenger skips separate branded startup overlay/splash"
+        "Preserves all Native 1.3.0 Rev4 Messenger login/Firebase/call-lifecycle behavior",
+        "Fixes Main Expo prebuild PluginError: reactContext is not defined",
+        "Escapes Kotlin reactContext interpolation inside withPrivateGatherNativeCalling.js",
+        "Adds readiness regression scan that rejects unescaped ${reactContext...} config-plugin template interpolation"
       ]
-    }
+    },
+    "superseded_candidates": [
+      {
+        "version": "1.3.0 Rev4",
+        "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Messenger-Login-Cross-Device-Call-Lifecycle-Complete-Direct-Windows-Build-Kit.zip",
+        "sha256": "a614d1402b79bd46480a722c400ae0ca8152454643bb82261ec27c764eaf8a93",
+        "status": "superseded_failed_prebuild",
+        "failure": "Main expo prebuild --clean failed with PluginError: reactContext is not defined"
+      }
+    ]
   },
   "website": {
     "last_user_reported_installed_version": "1.1.201",
@@ -69,14 +74,7 @@
     "direct_upgrade_replay": "pass",
     "database_migrations_from_1_1_201": 2,
     "install_acceptance_confirmed": false,
-    "changes": [
-      "dedicated native-login rate limiter",
-      "1.1.205 verification handoff reuse remains included",
-      "call.claimed realtime and native push retract",
-      "call.ended realtime and native push retract",
-      "call pushes restricted to Messenger-role native devices",
-      "website ringer start is idempotent"
-    ]
+    "changed_for_rev4_rev2": false
   },
   "credential_policy": {
     "firebase_admin_credentials": "external server push-gateway only; never app kit or public GitHub",
