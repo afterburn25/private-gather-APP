@@ -7,9 +7,15 @@ import {C} from '../theme';
 
 type Props={uri?:string|null;style?:StyleProp<ImageStyle>;fallback?:string;containerStyle?:StyleProp<ViewStyle>;resizeMode?:'cover'|'contain'};
 
+type CacheEntry={path:string;size:number;modified:number};
 const CACHE_DIR=`${FileSystem.cacheDirectory}private-gather-media-v200/`;
+const CACHE_MAX_BYTES=256*1024*1024;
+const CACHE_TARGET_BYTES=192*1024*1024;
+const CACHE_MAX_AGE_MS=14*24*60*60*1000;
+const CACHE_TRIM_INTERVAL_MS=6*60*60*1000;
 const resolved=new Map<string,string>();
 const inflight=new Map<string,Promise<string>>();
+let lastTrimAt=0;let trimPromise:Promise<void>|null=null;
 
 function apiOrigin(){try{return new URL(API_BASE).origin}catch{return 'https://member.privategather.com'}}
 function normalizeMediaUri(raw:string){
@@ -49,12 +55,53 @@ function extensionFor(contentType:string,uri:string){
   }catch{}
   return '.jpg';
 }
+function modifiedMs(info:any){const raw=Number(info?.modificationTime||0);return raw>0?(raw<10_000_000_000?raw*1000:raw):0}
+function forgetPath(path:string){for(const [key,value] of resolved.entries())if(value===path)resolved.delete(key)}
+async function removeCacheFile(path:string){forgetPath(path);await FileSystem.deleteAsync(path,{idempotent:true}).catch(()=>{})}
 async function existingCached(base:string){
+  const now=Date.now();
   for(const ext of ['.jpg','.png','.webp','.gif','.avif','.svg']){
     const candidate=base+ext;
-    try{const info:any=await FileSystem.getInfoAsync(candidate);if(info?.exists&&Number(info?.size||0)>0)return candidate}catch{}
+    try{
+      const info:any=await FileSystem.getInfoAsync(candidate);
+      if(!info?.exists||Number(info?.size||0)<=0)continue;
+      const modified=modifiedMs(info);
+      if(modified&&now-modified>CACHE_MAX_AGE_MS){await removeCacheFile(candidate);continue}
+      return candidate;
+    }catch{}
   }
   return '';
+}
+async function trimProtectedCache(protectedPath=''){
+  const now=Date.now();
+  if(now-lastTrimAt<CACHE_TRIM_INTERVAL_MS)return;
+  if(trimPromise)return trimPromise;
+  lastTrimAt=now;
+  trimPromise=(async()=>{
+    await FileSystem.makeDirectoryAsync(CACHE_DIR,{intermediates:true}).catch(()=>{});
+    let names:string[]=[];try{names=await FileSystem.readDirectoryAsync(CACHE_DIR)}catch{return}
+    const entries:CacheEntry[]=[];
+    for(const name of names){
+      const path=CACHE_DIR+name;
+      try{
+        const info:any=await FileSystem.getInfoAsync(path);
+        if(!info?.exists||info?.isDirectory)continue;
+        if(name.endsWith('.download')){if(path!==protectedPath)await removeCacheFile(path);continue}
+        const size=Math.max(0,Number(info?.size||0));const modified=modifiedMs(info);
+        if(path!==protectedPath&&modified&&now-modified>CACHE_MAX_AGE_MS){await removeCacheFile(path);continue}
+        entries.push({path,size,modified});
+      }catch{}
+    }
+    let total=entries.reduce((sum,row)=>sum+row.size,0);
+    if(total<=CACHE_MAX_BYTES)return;
+    entries.sort((a,b)=>(a.modified||0)-(b.modified||0));
+    for(const row of entries){
+      if(total<=CACHE_TARGET_BYTES)break;
+      if(row.path===protectedPath)continue;
+      await removeCacheFile(row.path);total-=row.size;
+    }
+  })().finally(()=>{trimPromise=null});
+  return trimPromise;
 }
 async function resolveProtected(uri:string){
   const token=await getToken();
@@ -68,7 +115,7 @@ async function resolveProtected(uri:string){
     await FileSystem.makeDirectoryAsync(CACHE_DIR,{intermediates:true}).catch(()=>{});
     const base=`${CACHE_DIR}${cacheKey}`;
     const disk=await existingCached(base);
-    if(disk){resolved.set(memoryKey,disk);return disk}
+    if(disk){resolved.set(memoryKey,disk);trimProtectedCache(disk).catch(()=>{});return disk}
 
     const temp=`${base}.download`;
     await FileSystem.deleteAsync(temp,{idempotent:true}).catch(()=>{});
@@ -89,6 +136,7 @@ async function resolveProtected(uri:string){
     await FileSystem.deleteAsync(finalPath,{idempotent:true}).catch(()=>{});
     await FileSystem.moveAsync({from:temp,to:finalPath});
     resolved.set(memoryKey,finalPath);
+    trimProtectedCache(finalPath).catch(()=>{});
     return finalPath;
   })().finally(()=>inflight.delete(memoryKey));
 
