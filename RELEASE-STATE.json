@@ -6,34 +6,20 @@
     "native_repository": "afterburn25/private-gather-APP",
     "native_default_branch": "main",
     "native_1_3_source_branch": "feature/native-1.3.0-platform-expansion",
-    "continuity_files": [
-      "RELEASE-STATE.json",
-      "LOCAL-BUILD-WORKFLOW.md",
-      "AI-WORKFLOW.md",
-      "PRIVATE-GATHER-MASTER-HANDOFF.md"
-    ],
+    "continuity_files": ["RELEASE-STATE.json", "LOCAL-BUILD-WORKFLOW.md", "AI-WORKFLOW.md", "PRIVATE-GATHER-MASTER-HANDOFF.md"],
     "user_facing_build_workflow": "LOCAL-BUILD-WORKFLOW.md"
   },
   "architecture": {
-    "native_apps": [
-      "Private Gather",
-      "Private Gather Messenger"
-    ],
-    "pwa_parity_required": false,
+    "native_apps": ["Private Gather", "Private Gather Messenger"],
     "main_package": "com.privoralabs.privategather",
     "messenger_package": "com.privoralabs.privategather.messenger",
     "telecom_owner": "messenger",
     "main_must_not_register_android_phone_account": true,
-    "persistent_main_bottom_navigation": true,
-    "branded_page_header": true
+    "pwa_parity_required": false
   },
   "packaging": {
     "always_separate_by_default": true,
-    "artifacts": [
-      "website_core_zip",
-      "website_upgrade_zip",
-      "native_app_complete_build_kit_zip"
-    ],
+    "artifacts": ["website_core_zip", "website_upgrade_zip", "native_app_complete_build_kit_zip"],
     "combined_bundle_only_when_explicitly_requested": true,
     "native_overlay_patch_is_not_normal_handoff": true
   },
@@ -41,136 +27,60 @@
     "required_root": "C:\\PrivateGatherNative\\package.json",
     "requires_git_clone_or_checkout": false,
     "requires_github_actions_for_user_handoff": false,
-    "main_only_commands": [
-      "npm install --no-audit --no-fund",
-      "npm run check:ready",
-      "npm run typecheck",
-      "npx expo prebuild --clean --platform android",
-      "cd android",
-      ".\\gradlew.bat assembleDebug --no-daemon --max-workers=1",
-      "adb install -r .\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
-      "npx expo start --dev-client --clear"
-    ],
-    "both_apps_build_install_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\build-install-both.ps1",
-    "both_apps_metro_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\start-both-metro.ps1"
+    "preferred_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\build-install-both.ps1",
+    "dual_metro_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\start-both-metro.ps1"
   },
   "native": {
     "main_branch_baseline_version": "1.2.1",
     "main_branch_baseline_commit": "531cf7098ec3266bc1042248e999ad6d718713a8",
-    "native_1_3_foundation_branch": "feature/native-1.3.0-platform-expansion",
     "native_1_3_last_github_validated_commit": "779b28127ddc4c2b4cae1c4073a43ad3e1e9b56b",
     "native_1_3_last_github_validation_run_id": 34010605805,
     "native_1_3_last_github_validation_run_number": 69,
     "current_local_candidate": {
-      "version": "1.3.0 Rev3",
-      "artifact": "Private-Gather-Native-App-1.3.0-Rev3-Loading-Push-Navigation-Call-Repair-Complete-Direct-Windows-Build-Kit.zip",
-      "sha256": "a856b8deaeeef7fc12dc9d00b36d2e5741e9310dcfadb34786ae9e2e578dbf10",
+      "version": "1.3.0 Rev4",
+      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Messenger-Login-Cross-Device-Call-Lifecycle-Complete-Direct-Windows-Build-Kit.zip",
+      "sha256": "a614d1402b79bd46480a722c400ae0ca8152454643bb82261ec27c764eaf8a93",
       "status": "prepared_candidate_device_testing",
-      "github_validation_claimed_for_rev3": false,
+      "github_validation_claimed_for_rev4": false,
       "device_tested": false,
       "confirmed_live": false,
       "promotion_requires_explicit_user_acceptance": true,
-      "main_firebase_config_embedded_in_private_kit": true,
-      "messenger_firebase_config_embedded": false,
+      "firebase_client_config": "private direct-kit only; combined Main+Messenger Android clients; ignored by Git",
+      "firebase_admin_credentials_in_artifact": false,
       "changes": [
-        "Safety Center remains a large card in the Main Me body directly below Verification",
-        "Safety Center/App Lock supports device biometric and Private Gather PIN flows",
-        "default-off adult-content control is present",
-        "Discreet Profile / Privacy Shield foundation is present",
-        "Main does not own Android Telecom/CallKeep PhoneAccount registration",
-        "Messenger remains native calling and Android Telecom owner",
-        "branded native startup splash/overlay is the first visible surface",
-        "actual Metro bundling percentage drives the branded splash progress bar in development",
-        "default gray React Native bundling popup is suppressed by the postinstall React Native 0.86.3 compatibility patch",
-        "Main Firebase config is auto-wired through clean Expo prebuild and validated for com.privoralabs.privategather",
-        "persistent Main bottom navigation remains visible on authenticated detail/content pages",
-        "unified branded header shows Private Gather plus current page title/subtitle",
-        "Messenger full-screen incoming-call permission opens the correct Android settings surface",
-        "server/web canceled incoming calls immediately stop Messenger ringtone and clear incoming-call UI",
-        "one-command PowerShell scripts build/install Main and Messenger while preserving separate package IDs"
-      ],
-      "local_validation": {
-        "check_ready": "pass_0_failures",
-        "typescript_syntax_files": 65,
-        "typescript_syntax_diagnostics": 0,
-        "javascript_syntax_files": 8,
-        "javascript_syntax_failures": 0,
-        "zip_integrity": "pass",
-        "internal_manifest_failures": 0,
-        "fresh_dependency_install_in_packaging_environment": "not_completed_due_to_npm_registry_EAI_AGAIN",
-        "full_clean_prebuild_gradle_in_packaging_environment": "not_completed_due_to_dependency_registry_failure"
-      }
-    },
-    "known_device_test_history": [
-      {
-        "issue": "INSTALL_FAILED_VERSION_DOWNGRADE",
-        "detail": "Generated test build had versionCode 1 while an installed older build reported versionCode 1185.",
-        "user_resolution": "User uninstalled the prior app and reinstalled successfully; do not change versionCode solely for this unless asked."
-      },
-      {
-        "issue": "Android Telecom PhoneAccount SecurityException",
-        "detail": "Main attempted CallKeep PhoneAccount registration without a protected ConnectionService.",
-        "repair": "Main is prevented from owning Telecom PhoneAccount registration; Messenger remains Telecom owner."
-      },
-      {
-        "issue": "white/gray/bundling startup screens",
-        "repair": "Branded startup overlay is first; Rev3 routes actual Metro bundling percentage into the splash bar and suppresses the default gray popup."
-      },
-      {
-        "issue": "full-screen alert permission button did nothing",
-        "repair": "Permission management is owned by Messenger and opens the Android full-screen/notification/app settings fallbacks with explicit failure reporting."
-      },
-      {
-        "issue": "verification link returned Too Many Attempts",
-        "repair": "Website 1.1.205 reuses an active verification launch token/URL for ten minutes and adjusts native bridge throttles; native UI adds cooldown-safe retries."
-      },
-      {
-        "issue": "web canceled video call but native ringer continued",
-        "repair": "Incoming-call polling now detects disappearance/non-ringing state, stops Messenger ringer, clears incoming UI, and cancels the native call notification."
-      },
-      {
-        "issue": "Main push registration reported Default FirebaseApp not initialized",
-        "repair": "Private direct kit embeds and validates a Main Firebase Android config and app.config auto-wires googleServicesFile through clean prebuild."
-      }
-    ]
+        "Messenger login Show/Hide Password and no password auto-capitalization/autocorrect",
+        "combined Main+Messenger Firebase Android client configuration in private direct kit",
+        "Messenger realtime incoming.call, call.claimed and call.ended events",
+        "cross-device answer retracts stale incoming/ringing state without ending active call",
+        "failed mobile takeover of already-active web call is local-only cleanup",
+        "remote call terminal state retracts ringtone, notification and native incoming-call activity",
+        "ringer uses native loop without status-driven clip restarts",
+        "Messenger skips separate branded startup overlay/splash"
+      ]
+    }
   },
   "website": {
     "last_user_reported_installed_version": "1.1.201",
-    "prepared_version": "1.1.205",
-    "prepared_core_artifact": "Private-Gather-1.1.205-Native-Verification-Handoff-Stability-Core.zip",
-    "prepared_core_sha256": "5000763f27745b78221a730e8365c8bb5a39a42bd57609f8ccc68f8f926b3273",
-    "direct_upgrade_artifact": "Private-Gather-1.1.201-to-1.1.205-Native-Verification-Handoff-Stability-Direct-Upgrade.zip",
-    "direct_upgrade_sha256": "636c6eff538d66bfba56e44d2580d46558475616ff1f0361d43e9044f22f02ce",
+    "prepared_version": "1.1.206",
+    "prepared_core_artifact": "Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip",
+    "prepared_core_sha256": "d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b",
+    "direct_upgrade_artifact": "Private-Gather-1.1.201-to-1.1.206-Native-Messenger-Call-Lifecycle-Stability-Direct-Upgrade.zip",
+    "direct_upgrade_sha256": "f613e2834c321a58878777f468dda04e02f39e9d802eb4d519cf442bb87a87ef",
+    "direct_upgrade_replay": "pass",
+    "database_migrations_from_1_1_201": 2,
     "install_acceptance_confirmed": false,
-    "packaging_separate_from_native": true,
-    "migration_count": 115,
-    "new_migration_in_1_1_205": false,
-    "verification_handoff": {
-      "reuse_window_seconds": 600,
-      "launch_throttle": "60_per_minute",
-      "bridge_throttle": "60_per_minute"
-    },
-    "direct_upgrade_replay": "exact_pass"
+    "changes": [
+      "dedicated native-login rate limiter",
+      "1.1.205 verification handoff reuse remains included",
+      "call.claimed realtime and native push retract",
+      "call.ended realtime and native push retract",
+      "call pushes restricted to Messenger-role native devices",
+      "website ringer start is idempotent"
+    ]
   },
-  "firebase": {
-    "main": {
-      "configured_in_private_kit": true,
-      "package": "com.privoralabs.privategather"
-    },
-    "messenger": {
-      "configured_in_private_kit": false,
-      "required_package": "com.privoralabs.privategather.messenger",
-      "next_requirement": "Register Messenger as a separate Android app in Firebase and provide its google-services config."
-    },
-    "public_github_credential_policy": "Do not commit user-supplied Firebase credential/config files or values to public continuity documentation."
-  },
-  "toolchain": {
-    "node_ci": "22.23.2",
-    "java": "17",
-    "expo": "~57.0.17",
-    "react_native": "0.86.3",
-    "react": "19.2.3",
-    "typescript": "~6.0.3"
+  "credential_policy": {
+    "firebase_admin_credentials": "external server push-gateway only; never app kit or public GitHub",
+    "android_google_services": "private direct build kit may include client config; Git ignored"
   },
   "promotion_policy": {
     "device_test_required": true,
