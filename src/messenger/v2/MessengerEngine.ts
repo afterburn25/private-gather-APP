@@ -54,6 +54,8 @@ export class MessengerEngine{
 
   async conversations():Promise<StoredConversation[]>{return this.store.conversations()}
   async messages(conversationId:number):Promise<StoredMessage[]>{return this.store.messages(conversationId)}
+  async conversationDraft(conversationId:number){return (await this.store.getValue(`draft:${conversationId}`))||''}
+  async saveConversationDraft(conversationId:number,text:string){const value=String(text||'');await this.store.setValue(`draft:${conversationId}`,value.length?value:null)}
   typingLabel(conversationId:number){return this.typing.get(conversationId)?.label||''}
 
   async refreshInbox(){
@@ -104,7 +106,7 @@ export class MessengerEngine{
       return r.message;
     }catch(e){
       await this.store.failOptimistic(optimistic.key,1);this.emit(`conversation:${conversationId}`);
-      return optimistic.message;
+      return {...optimistic.message,pending:true,failed:true};
     }
   }
 
