@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "project": "Private Gather",
   "updated_at": "2026-09-06",
   "authority": {
@@ -38,29 +38,29 @@
     "native_1_3_last_github_validation_run_id": 34010605805,
     "native_1_3_last_github_validation_run_number": 69,
     "current_local_candidate": {
-      "version": "1.3.0 Rev4 Rev3",
-      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev3-Messenger-Prebuild-Anchor-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
-      "sha256": "ae0719f8e2050d23989bd3533abe873d9f32732108d700faddce3d2229c47610",
+      "version": "1.3.0 Rev4 Rev4",
+      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev4-Expo-SystemUI-PowerShell-Native-Warning-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
+      "sha256": "5a379004037b2e11898110da4a61f4aa3a8fc365b1d6798e9cce297be9f9be75",
       "status": "prepared_candidate_device_testing",
-      "github_validation_claimed_for_rev4_rev3": false,
+      "github_validation_claimed_for_rev4_rev4": false,
       "device_tested": false,
       "confirmed_live": false,
       "promotion_requires_explicit_user_acceptance": true,
       "firebase_client_config": "private direct-kit only; combined Main+Messenger Android clients; ignored by Git",
       "firebase_admin_credentials_in_artifact": false,
       "changes": [
-        "Preserves all Native 1.3.0 Rev4 Messenger login/Firebase/cross-device call lifecycle behavior",
-        "Preserves Rev4 Rev2 Main reactContext config-plugin interpolation hotfix",
-        "Fixes Messenger prebuild stale notification anchor in withPrivateGatherMessenger121.js",
-        "Messenger enhancement supports manager.notify(notificationId(callId), notification) and retains legacy fallback",
-        "npm run check:ready now executes a generated Messenger native-call dangerous-mod composition test",
-        "one-command workflow now writes per-flavor prebuild logs and prints the last 60 lines automatically on failure"
+        "Preserves all Native 1.3.0 Rev4 Rev3 behavior",
+        "Adds expo-system-ui ~57.0.3 for configured dark userInterfaceStyle",
+        "One-command build always reconciles npm dependencies before prebuild",
+        "Expo prebuild stderr is merged inside cmd.exe so harmless native warnings do not become terminating PowerShell NativeCommandError records",
+        "Prebuild success/failure is decided by the actual native exit code",
+        "Readiness gate verifies SystemUI and warning-safe PowerShell native execution"
       ],
       "local_validation": {
         "check_ready": "pass_0_failures",
         "messenger_generated_plugin_chain": "pass",
-        "javascript_syntax": "pass",
         "zip_integrity": "pass",
+        "internal_manifest_entries": 149,
         "internal_manifest_failures": 0,
         "service_account_secret_hits": 0
       }
@@ -78,7 +78,14 @@
         "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev2-Prebuild-Template-Interpolation-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
         "sha256": "d92f848fdfc2884629242c7fb84912d1b6d59212d6bbe3c8d07e9d3ff823fa38",
         "status": "superseded_failed_messenger_prebuild",
-        "failure": "Main prebuild passed, then Messenger prebuild failed because the Messenger 1.2.1 enhancement expected the obsolete hard-coded manager.notify line instead of notificationId(callId)"
+        "failure": "Main prebuild passed, then Messenger prebuild failed because the Messenger enhancement expected the obsolete hard-coded manager.notify line instead of notificationId(callId)"
+      },
+      {
+        "version": "1.3.0 Rev4 Rev3",
+        "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev3-Messenger-Prebuild-Anchor-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
+        "sha256": "ae0719f8e2050d23989bd3533abe873d9f32732108d700faddce3d2229c47610",
+        "status": "superseded_windows_wrapper_false_fatal_warning",
+        "failure": "Windows PowerShell promoted Expo's userInterfaceStyle/expo-system-ui stderr warning to NativeCommandError before the wrapper could evaluate the native exit code"
       }
     ]
   },
@@ -92,7 +99,7 @@
     "direct_upgrade_replay": "pass",
     "database_migrations_from_1_1_201": 2,
     "install_acceptance_confirmed": false,
-    "changed_for_rev4_rev3": false
+    "changed_for_rev4_rev4": false
   },
   "credential_policy": {
     "firebase_admin_credentials": "external server push-gateway only; never app kit or public GitHub",
