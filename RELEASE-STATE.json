@@ -1,25 +1,39 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "project": "Private Gather",
   "updated_at": "2026-09-06",
   "authority": {
     "native_repository": "afterburn25/private-gather-APP",
     "native_default_branch": "main",
     "native_1_3_source_branch": "feature/native-1.3.0-platform-expansion",
-    "continuity_files": ["RELEASE-STATE.json", "LOCAL-BUILD-WORKFLOW.md", "AI-WORKFLOW.md", "PRIVATE-GATHER-MASTER-HANDOFF.md"],
+    "continuity_files": [
+      "RELEASE-STATE.json",
+      "LOCAL-BUILD-WORKFLOW.md",
+      "AI-WORKFLOW.md",
+      "PRIVATE-GATHER-MASTER-HANDOFF.md"
+    ],
     "user_facing_build_workflow": "LOCAL-BUILD-WORKFLOW.md"
   },
   "architecture": {
-    "native_apps": ["Private Gather", "Private Gather Messenger"],
+    "native_apps": [
+      "Private Gather",
+      "Private Gather Messenger"
+    ],
     "main_package": "com.privoralabs.privategather",
     "messenger_package": "com.privoralabs.privategather.messenger",
     "telecom_owner": "messenger",
     "main_must_not_register_android_phone_account": true,
+    "foreground_messenger_incoming_surface": "React Messenger call UI",
+    "background_locked_killed_messenger_incoming_surface": "native Android full-screen incoming-call activity",
     "pwa_parity_required": false
   },
   "packaging": {
     "always_separate_by_default": true,
-    "artifacts": ["website_core_zip", "website_upgrade_zip", "native_app_complete_build_kit_zip"],
+    "artifacts": [
+      "website_core_zip",
+      "website_upgrade_zip",
+      "native_app_complete_build_kit_zip"
+    ],
     "combined_bundle_only_when_explicitly_requested": true,
     "native_overlay_patch_is_not_normal_handoff": true
   },
@@ -29,7 +43,10 @@
     "requires_github_actions_for_user_handoff": false,
     "preferred_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\build-install-both.ps1",
     "dual_metro_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\start-both-metro.ps1",
-    "prebuild_logs": ["dist\\prebuild-main.log", "dist\\prebuild-messenger.log"]
+    "prebuild_logs": [
+      "dist\\prebuild-main.log",
+      "dist\\prebuild-messenger.log"
+    ]
   },
   "native": {
     "main_branch_baseline_version": "1.2.1",
@@ -38,31 +55,34 @@
     "native_1_3_last_github_validation_run_id": 34010605805,
     "native_1_3_last_github_validation_run_number": 69,
     "current_local_candidate": {
-      "version": "1.3.0 Rev4 Rev4",
-      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev4-Expo-SystemUI-PowerShell-Native-Warning-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
-      "sha256": "5a379004037b2e11898110da4a61f4aa3a8fc365b1d6798e9cce297be9f9be75",
+      "version": "1.3.0 Rev4 Rev5",
+      "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev5-Incoming-Call-Video-Splash-Stability-Complete-Direct-Windows-Build-Kit.zip",
+      "sha256": "01b006ed38445b3f479b84a3617664a9004455a939ba680aba067968f13d84a0",
       "status": "prepared_candidate_device_testing",
-      "github_validation_claimed_for_rev4_rev4": false,
+      "github_validation_claimed_for_rev4_rev5": false,
       "device_tested": false,
       "confirmed_live": false,
       "promotion_requires_explicit_user_acceptance": true,
       "firebase_client_config": "private direct-kit only; combined Main+Messenger Android clients; ignored by Git",
       "firebase_admin_credentials_in_artifact": false,
       "changes": [
-        "Preserves all Native 1.3.0 Rev4 Rev3 behavior",
-        "Adds expo-system-ui ~57.0.3 for configured dark userInterfaceStyle",
-        "One-command build always reconciles npm dependencies before prebuild",
-        "Expo prebuild stderr is merged inside cmd.exe so harmless native warnings do not become terminating PowerShell NativeCommandError records",
-        "Prebuild success/failure is decided by the actual native exit code",
-        "Readiness gate verifies SystemUI and warning-safe PowerShell native execution"
+        "Foreground Messenger keeps the React incoming-call screen and persistent Answer/Decline controls instead of launching/cross-canceling the native incoming activity",
+        "Background/locked/killed Messenger uses the native Android full-screen call activity and fresh pg-messenger-calls-v130r5 CallStyle notification channel",
+        "Adds notification-only dismiss bridge so foreground cleanup does not broadcast terminal call retract",
+        "Full-screen remote/local mobile call video uses contain/fit and native incoming camera preview uses fit-center instead of crop/zoom",
+        "Messenger removes both the branded startup overlay and expo-splash-screen plugin and uses a blank bootstrap surface to avoid the apparent second splash flash",
+        "Preserves all Rev4 Rev4 build-system, Firebase, login, realtime call lifecycle, and PowerShell fixes"
       ],
       "local_validation": {
         "check_ready": "pass_0_failures",
         "messenger_generated_plugin_chain": "pass",
+        "typescript_tsx_syntax_files": 65,
+        "typescript_tsx_syntax_diagnostics": 0,
         "zip_integrity": "pass",
-        "internal_manifest_entries": 149,
+        "internal_manifest_entries": 150,
         "internal_manifest_failures": 0,
-        "service_account_secret_hits": 0
+        "service_account_secret_hits": 0,
+        "full_clean_prebuild_gradle_physical_device": "not_completed_in_packaging_environment"
       }
     },
     "superseded_candidates": [
@@ -78,32 +98,46 @@
         "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev2-Prebuild-Template-Interpolation-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
         "sha256": "d92f848fdfc2884629242c7fb84912d1b6d59212d6bbe3c8d07e9d3ff823fa38",
         "status": "superseded_failed_messenger_prebuild",
-        "failure": "Main prebuild passed, then Messenger prebuild failed because the Messenger enhancement expected the obsolete hard-coded manager.notify line instead of notificationId(callId)"
+        "failure": "Messenger enhancement expected obsolete hard-coded manager.notify line instead of notificationId(callId)"
       },
       {
         "version": "1.3.0 Rev4 Rev3",
         "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev3-Messenger-Prebuild-Anchor-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
         "sha256": "ae0719f8e2050d23989bd3533abe873d9f32732108d700faddce3d2229c47610",
         "status": "superseded_windows_wrapper_false_fatal_warning",
-        "failure": "Windows PowerShell promoted Expo's userInterfaceStyle/expo-system-ui stderr warning to NativeCommandError before the wrapper could evaluate the native exit code"
+        "failure": "PowerShell promoted Expo userInterfaceStyle/expo-system-ui stderr warning to NativeCommandError"
+      },
+      {
+        "version": "1.3.0 Rev4 Rev4",
+        "artifact": "Private-Gather-Native-App-1.3.0-Rev4-Rev4-Expo-SystemUI-PowerShell-Native-Warning-Hotfix-Complete-Direct-Windows-Build-Kit.zip",
+        "sha256": "5a379004037b2e11898110da4a61f4aa3a8fc365b1d6798e9cce297be9f9be75",
+        "status": "superseded_device_findings",
+        "failure": "Physical-device testing exposed incoming-call visual ownership race, over-cropped call video, duplicate Messenger splash appearance, and remaining web ringtone-loop/contrast issues"
       }
     ]
   },
   "website": {
-    "last_user_reported_installed_version": "1.1.201",
-    "prepared_version": "1.1.206",
-    "prepared_core_artifact": "Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip",
-    "prepared_core_sha256": "d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b",
-    "direct_upgrade_artifact": "Private-Gather-1.1.201-to-1.1.206-Native-Messenger-Call-Lifecycle-Stability-Direct-Upgrade.zip",
-    "direct_upgrade_sha256": "f613e2834c321a58878777f468dda04e02f39e9d802eb4d519cf442bb87a87ef",
-    "direct_upgrade_replay": "pass",
-    "database_migrations_from_1_1_201": 2,
+    "last_user_reported_installed_version": "1.1.206",
+    "prepared_version": "1.1.207",
+    "prepared_core_artifact": "Private-Gather-1.1.207-Web-Call-Ringtone-Visual-Stability-Core.zip",
+    "prepared_core_sha256": "e39c57f48844e2b16b979d61ab0afd5106b9d2ce9741a3f761f37b46c3c6a8f3",
+    "sequential_upgrade_artifact": "Private-Gather-1.1.206-to-1.1.207-Web-Call-Ringtone-Visual-Stability-Upgrade.zip",
+    "sequential_upgrade_sha256": "3c307fab514ba33ceba29be89c6848a165897b482bab4970494725fd97273abc",
+    "upgrade_replay": "exact_pass_zero_missing_extra_hash_mismatch",
+    "migration_count": 115,
+    "new_migrations_in_1_1_207": 0,
     "install_acceptance_confirmed": false,
-    "changed_for_rev4_rev4": false
+    "changes": [
+      "Web incoming-call ringtone replays only from the media ended event after the complete calling.mp3 clip finishes",
+      "Pre-navigation incoming-call handoff no longer starts a ringtone that page navigation immediately cuts off and restarts",
+      "Dedicated call-page ringtone fallback also loops on actual media end instead of timer/restart behavior",
+      "Web Answer/Decline/End labels are forced white with full opacity for readable contrast",
+      "Embedded regression gate verifies the 1.1.207 call-ringtone and contrast contract"
+    ]
   },
   "credential_policy": {
-    "firebase_admin_credentials": "external server push-gateway only; never app kit or public GitHub",
-    "android_google_services": "private direct build kit may include client config; Git ignored"
+    "firebase_admin_credentials": "external server push-gateway only under /home/privoralabsweb/private-gather-push; never app kit or public GitHub",
+    "android_google_services": "private direct build kit may include combined client config; Git ignored"
   },
   "promotion_policy": {
     "device_test_required": true,
