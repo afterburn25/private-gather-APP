@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useState} from 'react';
 import {ActivityIndicator,FlatList,Pressable,RefreshControl,StyleSheet,Text,View} from 'react-native';
+import * as Notifications from 'expo-notifications';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {MessengerEngine} from '../MessengerEngine';
 import {StoredConversation} from '../MessengerStore';
@@ -10,7 +11,7 @@ import BrandLogo from '../../../components/BrandLogo';
 
 export default function MessengerInboxScreen({engine,onConversation,onLogout}:{engine:MessengerEngine;onConversation:(id:number)=>void;onLogout:()=>void}){
   const [rows,setRows]=useState<StoredConversation[]>([]);const [loading,setLoading]=useState(true);const [refreshing,setRefreshing]=useState(false);const [error,setError]=useState('');
-  const fromCache=useCallback(async()=>{setRows(await engine.conversations());setLoading(false)},[engine]);
+  const fromCache=useCallback(async()=>{const cached=await engine.conversations();setRows(cached);setLoading(false);const unread=cached.reduce((sum,row)=>sum+Math.max(0,Number(row.unread||0)),0);Notifications.setBadgeCountAsync(unread).catch(()=>{})},[engine]);
   const refresh=useCallback(async()=>{try{setError('');await engine.refreshInbox()}catch(e:any){setError(String(e?.message||e))}finally{await fromCache()}},[engine,fromCache]);
   useEffect(()=>{let live=true;const load=()=>{if(live)fromCache().catch(()=>{})};const un=engine.subscribe('inbox',load);fromCache().then(()=>refresh()).catch(()=>refresh());return()=>{live=false;un()}},[engine,fromCache,refresh]);
   const pull=async()=>{setRefreshing(true);await refresh();setRefreshing(false)};
