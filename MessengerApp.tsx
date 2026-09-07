@@ -15,6 +15,8 @@ import MessengerLoginScreen from './src/messenger/v2/screens/MessengerLoginScree
 import MessengerInboxScreen from './src/messenger/v2/screens/MessengerInboxScreen';
 import MessengerConversationScreen from './src/messenger/v2/screens/MessengerConversationScreen';
 import MessengerCallScreen from './src/messenger/v2/screens/MessengerCallScreen';
+import MessengerSettingsScreen from './src/messenger/v2/screens/MessengerSettingsScreen';
+import SafetyCenterScreen from './src/screens/SafetyCenterScreen';
 import {startMessengerRinger,stopMessengerRinger} from './src/messenger/v2/calls/MessengerRinger';
 import {C} from './src/theme';
 
@@ -107,7 +109,7 @@ function MessengerRoot(){
   if(!authed)return <MessengerLoginScreen onLogin={signIn}/>;
   if(call)return <MessengerCallScreen call={call} onAnswer={answerIncoming} onDecline={()=>{stopMessengerRinger().catch(()=>{});callManager.decline().catch(()=>{});setCall(null)}} onEnd={()=>{stopMessengerRinger().catch(()=>{});callManager.end().catch(()=>{});setCall(null)}} onMute={()=>callManager.toggleMute()} onVideo={()=>callManager.toggleVideo()} onFlip={()=>callManager.flipCamera()}/>;
   if(!engine)return <View style={s.loading}><ActivityIndicator color={C.pink}/></View>;
-  return <NavigationContainer ref={nav} theme={navTheme}><Stack.Navigator screenOptions={{headerShown:false,contentStyle:{backgroundColor:C.bg}}}><Stack.Screen name="Inbox">{()=> <MessengerInboxScreen engine={engine} onConversation={id=>nav.navigate('Conversation',{id})} onLogout={logout}/>}</Stack.Screen><Stack.Screen name="Conversation">{({route}:any)=> <ConversationRoute engine={engine} route={route} onBack={()=>nav.goBack()} onCall={startCall}/>}</Stack.Screen></Stack.Navigator></NavigationContainer>;
+  return <NavigationContainer ref={nav} theme={navTheme}><Stack.Navigator screenOptions={{headerShown:false,contentStyle:{backgroundColor:C.bg}}}><Stack.Screen name="Inbox">{()=> <MessengerInboxScreen engine={engine} onConversation={id=>nav.navigate('Conversation',{id})} onSettings={()=>nav.navigate('Settings')}/>}</Stack.Screen><Stack.Screen name="Conversation">{({route}:any)=> <ConversationRoute engine={engine} route={route} onBack={()=>nav.goBack()} onCall={startCall}/>}</Stack.Screen><Stack.Screen name="Settings">{()=> <MessengerSettingsScreen onBack={()=>nav.goBack()} onSafety={()=>nav.navigate('Safety')} onLogout={logout}/>}</Stack.Screen><Stack.Screen name="Safety">{()=> <SafetyCenterScreen onBack={()=>nav.goBack()}/>}</Stack.Screen></Stack.Navigator></NavigationContainer>;
 }
 function ConversationRoute({engine,route,onBack,onCall}:{engine:MessengerEngine;route:any;onBack:()=>void;onCall:(peer:any,mode:'voice'|'video')=>void}){const auto=useRef(false);const [peer,setPeer]=useState<any>(null);useEffect(()=>{if(auto.current||!route.params?.autoCall)return;auto.current=true;engine.openConversation(Number(route.params.id)).then(p=>{setPeer(p?.conversation);if(p?.conversation)onCall(p.conversation,route.params.autoCall)}).catch(()=>{})},[engine,route.params?.id,route.params?.autoCall,onCall]);return <MessengerConversationScreen engine={engine} conversationId={Number(route.params.id)} onBack={onBack} onCall={onCall}/>}
 function parseIncomingCallUrl(url:string){
