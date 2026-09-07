@@ -1,0 +1,65 @@
+name: Diagnose Messenger APK
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-messenger-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  messenger-apk-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PG_APP_FLAVOR: messenger
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install exact dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Generate Messenger Android project
+        run: npx expo prebuild --clean --platform android
+      - name: Capture Messenger assembleDebug diagnostic
+        id: diagnose
+        shell: bash
+        run: |
+          set +e
+          cd android
+          ./gradlew assembleDebug --stacktrace --console=plain > /tmp/pg-messenger-gradle.log 2>&1
+          rc=$?
+          cd ..
+          {
+            echo "Private Gather Messenger assembleDebug diagnostic"
+            echo "source_commit=${GITHUB_SHA}"
+            echo "gradle_exit_code=${rc}"
+            echo
+            echo "=== FAILURE / WHAT WENT WRONG / CAUSED BY ==="
+            grep -n -E -A 18 -B 4 'FAILURE:|What went wrong:|Execution failed for task|Caused by:|A failure occurred while executing|error:|ERROR' /tmp/pg-messenger-gradle.log | tail -n 260 || true
+            echo
+            echo "=== FINAL 160 LINES ==="
+            tail -n 160 /tmp/pg-messenger-gradle.log
+          } > /tmp/pg-messenger-apk-diagnostic.txt
+          echo "exit_code=${rc}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload compact diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-gather-messenger-apk-diagnostic
+          path: /tmp/pg-messenger-apk-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 2
+      - name: Preserve failure result
+        if: steps.diagnose.outputs.exit_code != '0'
+        run: exit 1
