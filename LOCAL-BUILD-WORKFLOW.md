@@ -23,15 +23,8 @@ Extract the complete Native App kit so this exists:
 cd C:\PrivateGatherNative
 powershell -ExecutionPolicy Bypass -File .\scripts\build-install-both.ps1
 ```
-This builds **Private Gather Main** and **Private Gather Messenger** as separate package IDs and installs both through ADB.
 
-The script always runs:
-```powershell
-npm install --no-audit --no-fund
-npm run check:ready
-npm run typecheck
-```
-before prebuilding either flavor, so newly added Expo native modules cannot be skipped by stale `node_modules`.
+This builds **Private Gather Main** and **Private Gather Messenger** as separate package IDs and installs both through ADB. It runs `npm install --no-audit --no-fund`, `npm run check:ready`, and `npm run typecheck` before native prebuild/build.
 
 If Android reports VERSION_DOWNGRADE and the user accepts clearing local app data:
 ```powershell
@@ -46,54 +39,67 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-both-metro.ps1
 ```
 Main uses 8081; Messenger uses 8082.
 
-### Manual Main build remains supported
-```powershell
-cd C:\PrivateGatherNative
-npm install --no-audit --no-fund
-npm run check:ready
-npm run typecheck
-npx expo prebuild --clean --platform android
-cd android
-.\gradlew.bat assembleDebug --no-daemon --max-workers=1
-```
+Prebuild logs remain:
+- `dist\prebuild-main.log`
+- `dist\prebuild-messenger.log`
 
-## Current candidate
-- Native: **1.3.0 Rev4 Rev4**
-- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev4-Expo-SystemUI-PowerShell-Native-Warning-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
-- SHA-256: `5a379004037b2e11898110da4a61f4aa3a8fc365b1d6798e9cce297be9f9be75`
+## Current native candidate
+- Native: **1.3.0 Rev4 Rev5**
+- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev5-Incoming-Call-Video-Splash-Stability-Complete-Direct-Windows-Build-Kit.zip`
+- SHA-256: `01b006ed38445b3f479b84a3617664a9004455a939ba680aba067968f13d84a0`
 - Status: **prepared candidate / physical-device testing**
+- Do not call it device-tested, GitHub-validated as Rev5, live, or confirmed until the required evidence exists and the user explicitly accepts it.
 
-Rev4 Rev4 supersedes Rev4 Rev3 for local testing. Rev4 Rev3 reached Expo prebuild but Windows PowerShell surfaced this Expo stderr warning as a terminating `NativeCommandError`:
+Rev4 Rev5 preserves all Rev4 Rev4 build/Firebase/login/call-lifecycle work and adds:
+- Foreground Messenger owns the React incoming-call screen; it does not launch and then retract the native incoming activity.
+- Background/locked/killed Messenger uses the native Android full-screen incoming-call activity.
+- Android incoming calls use a fresh `pg-messenger-calls-v130r5` call channel plus `NotificationCompat.CallStyle.forIncomingCall` and full-screen intent.
+- Foreground cleanup can dismiss only the notification without broadcasting a terminal call retract.
+- Full-screen call video uses fit/contain; native incoming camera preview uses fit-center instead of crop/zoom.
+- Messenger omits both the custom startup overlay and the Expo splash plugin, and its JS bootstrap is blank, eliminating the extra Messenger splash layer.
+- Main retains the branded startup/progress splash.
 
-`android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.`
+Packaged validation:
+- `npm run check:ready`: PASS, 0 failures
+- generated Messenger dangerous-mod composition: PASS
+- TypeScript/TSX syntax/transpile: 65 files, 0 diagnostics
+- ZIP integrity: PASS
+- internal build-kit manifest: 150 files, 0 mismatches
+- Firebase Admin/service-account secret hits: 0
 
-Rev4 Rev4 repairs both causes:
-- Adds `expo-system-ui` `~57.0.3` and its config plugin for the existing `userInterfaceStyle: dark` setting.
-- The PowerShell wrapper merges Expo stderr inside `cmd.exe` and fails only when the native process returns a non-zero exit code. Harmless native stderr warnings are logged rather than promoted to a terminating PowerShell error.
-- Per-flavor logs remain `dist\prebuild-main.log` and `dist\prebuild-messenger.log`.
-- `npm run check:ready` verifies the SystemUI dependency/plugin and the warning-safe native execution wrapper.
-
-All previous Rev4 behavior remains included:
-- Messenger Show/Hide Password; no password auto-capitalization/autocorrect.
-- Combined private Firebase Android client configuration for Main and Messenger; never publish that JSON to GitHub.
-- Messenger realtime `incoming.call`, `call.claimed`, and `call.ended` handling.
-- Cross-device answer retracts stale ringing/incoming UI without ending the active call.
-- Failed mobile takeover of an already-active web call performs local cleanup only.
-- Remote cancel/end retracts Messenger ringtone, notification, and Android incoming-call activity.
-- Ringtone uses native audio looping without repeatedly restarting the clip.
-- Messenger does not use a second branded Private Gather startup overlay/splash.
-- Rev4 Rev2 Main `reactContext` template fix and Rev4 Rev3 Messenger notification-anchor fix remain preserved.
+Full clean Expo prebuild, Gradle compile, and physical-device acceptance are still performed in the user's normal Windows workflow; do not overstate packaging validation.
 
 ## Paired website candidate
-Website **1.1.206 is unchanged by Rev4 Rev4**. Do not reinstall the website solely for this Native hotfix.
+- Website Core: **1.1.207** — `Private-Gather-1.1.207-Web-Call-Ringtone-Visual-Stability-Core.zip`
+- Core SHA-256: `e39c57f48844e2b16b979d61ab0afd5106b9d2ce9741a3f761f37b46c3c6a8f3`
+- Sequential Upgrade: **1.1.206 → 1.1.207** — `Private-Gather-1.1.206-to-1.1.207-Web-Call-Ringtone-Visual-Stability-Upgrade.zip`
+- Upgrade SHA-256: `3c307fab514ba33ceba29be89c6848a165897b482bab4970494725fd97273abc`
+- Upgrade replay: exact PASS, zero missing files, extra runtime files, or hash mismatches
+- 1.1.207 adds no migration; migration count remains 115
 
-- Website Core: **1.1.206** — `Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip`
-- Core SHA-256: `d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b`
-- Direct Upgrade: **1.1.201 → 1.1.206** — `Private-Gather-1.1.201-to-1.1.206-Native-Messenger-Call-Lifecycle-Stability-Direct-Upgrade.zip`
-- Upgrade SHA-256: `f613e2834c321a58878777f468dda04e02f39e9d802eb4d519cf442bb87a87ef`
+Website 1.1.207:
+- waits for the actual end of `calling.mp3` before replaying the web incoming ringtone
+- prevents pre-navigation ringtone start/cutoff/restart
+- uses the same natural-end behavior on the call-page fallback
+- forces Answer/Decline/End call labels to white for readable contrast
 
 ## Calling ownership
-Messenger owns Android Telecom/CallKeep/native incoming calls. Main must not register an Android Telecom PhoneAccount unless the architecture is deliberately changed.
+Messenger remains the only native Telecom/CallKeep owner. Main must not register Android Telecom PhoneAccount.
+
+For incoming calls:
+- **Messenger foreground:** React Messenger call UI owns the visible Answer/Decline surface.
+- **Messenger background/locked/killed:** native Android incoming-call Activity/full-screen notification owns the visible surface.
 
 ## Credential boundary
-Firebase Admin/service-account credentials stay in the external server push-gateway deployment. They are never packaged in the Native App kit and never committed to public GitHub. The direct native kit may contain the Android `google-services.json` client config needed to build the two APKs, and Git ignores it.
+Firebase Admin/service-account credentials stay in the user's external server push-gateway deployment at `/home/privoralabsweb/private-gather-push`. They are never packaged in the Website or Native artifacts and never committed to public GitHub.
+
+The private Native build kit may contain the combined Android `google-services.json` client configuration for:
+- `com.privoralabs.privategather`
+- `com.privoralabs.privategather.messenger`
+
+Git ignores that private client file.
+
+## Promotion rule
+Prepared candidate → GitHub-validated candidate → Device-tested candidate → Confirmed live baseline.
+
+Never promote automatically. Physical-device success and explicit user acceptance are required.
