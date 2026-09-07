@@ -25,6 +25,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-install-both.ps1
 ```
 This builds **Private Gather Main** and **Private Gather Messenger** as separate package IDs and installs both through ADB.
 
+The script always runs:
+```powershell
+npm install --no-audit --no-fund
+npm run check:ready
+npm run typecheck
+```
+before prebuilding either flavor, so newly added Expo native modules cannot be skipped by stale `node_modules`.
+
 If Android reports VERSION_DOWNGRADE and the user accepts clearing local app data:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-install-both.ps1 -CleanInstall
@@ -50,27 +58,34 @@ cd android
 ```
 
 ## Current candidate
-- Native: **1.3.0 Rev4 Rev3**
-- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev3-Messenger-Prebuild-Anchor-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
-- SHA-256: `ae0719f8e2050d23989bd3533abe873d9f32732108d700faddce3d2229c47610`
+- Native: **1.3.0 Rev4 Rev4**
+- Artifact: `Private-Gather-Native-App-1.3.0-Rev4-Rev4-Expo-SystemUI-PowerShell-Native-Warning-Hotfix-Complete-Direct-Windows-Build-Kit.zip`
+- SHA-256: `5a379004037b2e11898110da4a61f4aa3a8fc365b1d6798e9cce297be9f9be75`
 - Status: **prepared candidate / physical-device testing**
 
-Rev4 Rev3 supersedes Rev4 Rev2. Rev4 Rev2 fixed the Main `PluginError: reactContext is not defined`; physical Windows testing then reached Messenger and exposed a second, Messenger-only prebuild failure. The Messenger enhancement still searched for the older hard-coded `manager.notify(41000 + ...)` line while the base generator now emits `manager.notify(notificationId(callId), notification)`. Rev4 Rev3 supports the current generator line and retains the old line as a compatibility fallback.
+Rev4 Rev4 supersedes Rev4 Rev3 for local testing. Rev4 Rev3 reached Expo prebuild but Windows PowerShell surfaced this Expo stderr warning as a terminating `NativeCommandError`:
 
-`npm run check:ready` now executes a generated Messenger native-call plugin-composition test, so this exact generator/enhancement mismatch is caught before prebuild. The build command is unchanged. On any future prebuild failure the script saves `dist\prebuild-main.log` or `dist\prebuild-messenger.log` and prints the last 60 lines automatically.
+`android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.`
 
-All Rev4 behavior remains included:
+Rev4 Rev4 repairs both causes:
+- Adds `expo-system-ui` `~57.0.3` and its config plugin for the existing `userInterfaceStyle: dark` setting.
+- The PowerShell wrapper merges Expo stderr inside `cmd.exe` and fails only when the native process returns a non-zero exit code. Harmless native stderr warnings are logged rather than promoted to a terminating PowerShell error.
+- Per-flavor logs remain `dist\prebuild-main.log` and `dist\prebuild-messenger.log`.
+- `npm run check:ready` verifies the SystemUI dependency/plugin and the warning-safe native execution wrapper.
+
+All previous Rev4 behavior remains included:
 - Messenger Show/Hide Password; no password auto-capitalization/autocorrect.
-- Combined private Firebase Android client configuration for both Main and Messenger; never publish that JSON to GitHub.
+- Combined private Firebase Android client configuration for Main and Messenger; never publish that JSON to GitHub.
 - Messenger realtime `incoming.call`, `call.claimed`, and `call.ended` handling.
-- Cross-device answer retracts stale ringing/incoming UI on the other device without ending the active call.
+- Cross-device answer retracts stale ringing/incoming UI without ending the active call.
 - Failed mobile takeover of an already-active web call performs local cleanup only.
 - Remote cancel/end retracts Messenger ringtone, notification, and Android incoming-call activity.
 - Ringtone uses native audio looping without repeatedly restarting the clip.
 - Messenger does not use a second branded Private Gather startup overlay/splash.
+- Rev4 Rev2 Main `reactContext` template fix and Rev4 Rev3 Messenger notification-anchor fix remain preserved.
 
 ## Paired website candidate
-Website **1.1.206 is unchanged by Rev4 Rev3**. Do not reinstall the website solely for this Native prebuild hotfix.
+Website **1.1.206 is unchanged by Rev4 Rev4**. Do not reinstall the website solely for this Native hotfix.
 
 - Website Core: **1.1.206** — `Private-Gather-1.1.206-Native-Messenger-Sign-In-Call-Lifecycle-Stability-Core.zip`
 - Core SHA-256: `d66bc3a82c47a6d9832f8bbf7f391bbe5931450e532b3d45021e2024d45a171b`
